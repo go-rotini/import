@@ -1,0 +1,201 @@
+[lossy] kubectl: custom help function k8s.io/kubectl/pkg/util/templates.(*templater).HelpFunc.func1: rotini generates help from the spec; port it as a verbatim help page or a help handler
+[lossy] kubectl: custom usage function k8s.io/kubectl/pkg/util/templates.(*templater).UsageFunc.func1: rotini generates usage from the spec
+[lossy] kubectl: --cluster has a Go completion function (k8s.io/kubectl/pkg/cmd.registerCompletionFuncForGlobalFlags.func3): reimplement it as a rotini completer
+[lossy] kubectl: --context has a Go completion function (k8s.io/kubectl/pkg/cmd.registerCompletionFuncForGlobalFlags.func2): reimplement it as a rotini completer
+[lossy] kubectl: --namespace has a Go completion function (k8s.io/kubectl/pkg/cmd.registerCompletionFuncForGlobalFlags.func1): reimplement it as a rotini completer
+[lossy] kubectl: --user has a Go completion function (k8s.io/kubectl/pkg/cmd.registerCompletionFuncForGlobalFlags.func4): reimplement it as a rotini completer
+[info] kubectl alpha: help topic imported as a command; its text is the description
+[lossy] kubectl alpha: custom help function k8s.io/kubectl/pkg/cmd.NewCmdAlpha.func1: rotini generates help from the spec; port it as a verbatim help page or a help handler
+[info] kubectl annotate: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl annotate: <key_1> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl annotate: <key_n> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl annotate: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[info] kubectl api-resources: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl api-versions: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl apply: --subresource has a Go completion function (k8s.io/kubectl/pkg/cmd/util.AddSubresourceFlags.func1): reimplement it as a rotini completer
+[info] kubectl apply edit-last-applied: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl apply edit-last-applied: <resource> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl apply edit-last-applied: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[info] kubectl apply set-last-applied: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl apply view-last-applied: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl apply view-last-applied: <type> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl apply view-last-applied: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[info] kubectl attach: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl attach: <pod> has a Go completion function (k8s.io/kubectl/pkg/util/completion.PodResourceNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl attach: <container> has a Go completion function (k8s.io/kubectl/pkg/util/completion.PodResourceNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl attach: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.PodResourceNameCompletionFunc.func1): reimplement it as a rotini completer
+[info] kubectl auth can-i: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl auth reconcile: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl auth whoami: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl autoscale: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl autoscale: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl autoscale: --max is required and has the default -1: Cobra still demands it on the command line, while rotini's default satisfies it
+[info] kubectl certificate approve: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl certificate deny: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl cluster-info dump: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl completion: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl config current-context: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl config delete-cluster: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl config delete-cluster: <name> has a Go completion function (k8s.io/kubectl/pkg/util/completion.ClusterCompletionFunc): reimplement it as a rotini completer
+[lossy] kubectl config delete-cluster: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.ClusterCompletionFunc): reimplement it as a rotini completer
+[info] kubectl config delete-context: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl config delete-context: <name> has a Go completion function (k8s.io/kubectl/pkg/util/completion.ContextCompletionFunc): reimplement it as a rotini completer
+[lossy] kubectl config delete-context: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.ContextCompletionFunc): reimplement it as a rotini completer
+[info] kubectl config delete-user: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl config delete-user: <name> has a Go completion function (k8s.io/kubectl/pkg/util/completion.UserCompletionFunc): reimplement it as a rotini completer
+[lossy] kubectl config delete-user: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.UserCompletionFunc): reimplement it as a rotini completer
+[info] kubectl config get-clusters: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl config get-contexts: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl config get-users: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl config rename-context: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl config rename-context: <context_name> has a Go completion function (k8s.io/kubectl/pkg/util/completion.ContextCompletionFunc): reimplement it as a rotini completer
+[lossy] kubectl config rename-context: <new_name> has a Go completion function (k8s.io/kubectl/pkg/util/completion.ContextCompletionFunc): reimplement it as a rotini completer
+[lossy] kubectl config rename-context: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.ContextCompletionFunc): reimplement it as a rotini completer
+[info] kubectl config set: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl config set: --set-raw-bytes has the custom value type "tristate" (*flag.Tristate): imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[info] kubectl config set-cluster: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl config set-cluster: --embed-certs has the custom value type "tristate" (*flag.Tristate): imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] kubectl config set-cluster: --insecure-skip-tls-verify has the custom value type "tristate" (*flag.Tristate): imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[info] kubectl config set-context: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl config set-context: <name> has a Go completion function (k8s.io/kubectl/pkg/util/completion.ContextCompletionFunc): reimplement it as a rotini completer
+[lossy] kubectl config set-context: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.ContextCompletionFunc): reimplement it as a rotini completer
+[lossy] kubectl config set-context: --namespace has a Go completion function (k8s.io/kubectl/pkg/cmd/config.NewCmdConfigSetContext.func2): reimplement it as a rotini completer
+[info] kubectl config set-credentials: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl config set-credentials: --embed-certs has the custom value type "tristate" (*flag.Tristate): imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] kubectl config set-credentials: --exec-provide-cluster-info has the custom value type "tristate" (*flag.Tristate): imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[info] kubectl config unset: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl config use-context: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl config use-context: <context_name> has a Go completion function (k8s.io/kubectl/pkg/util/completion.ContextCompletionFunc): reimplement it as a rotini completer
+[lossy] kubectl config use-context: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.ContextCompletionFunc): reimplement it as a rotini completer
+[info] kubectl config view: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl config view: --merge has the custom value type "tristate" (*flag.Tristate): imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[info] kubectl cordon: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl cordon: <node> has a Go completion function (k8s.io/kubectl/pkg/util/completion.ResourceNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl cordon: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.ResourceNameCompletionFunc.func1): reimplement it as a rotini completer
+[info] kubectl cp: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl cp: <file_spec_src> has a Go completion function (k8s.io/kubectl/pkg/cmd/cp.NewCmdCp.func1): reimplement it as a rotini completer
+[lossy] kubectl cp: <file_spec_dest> has a Go completion function (k8s.io/kubectl/pkg/cmd/cp.NewCmdCp.func1): reimplement it as a rotini completer
+[lossy] kubectl cp: <args> has a Go completion function (k8s.io/kubectl/pkg/cmd/cp.NewCmdCp.func1): reimplement it as a rotini completer
+[info] kubectl create clusterrole: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl create clusterrole: --aggregation-rule has the custom value type "mapStringString" (*flag.MapStringString): imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[info] kubectl create clusterrolebinding: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl create clusterrolebinding: --clusterrole has a Go completion function (k8s.io/kubectl/pkg/cmd/create.NewCmdCreateClusterRoleBinding.func2): reimplement it as a rotini completer
+[info] kubectl create configmap: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl create ingress: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl create namespace: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl create poddisruptionbudget: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl create priorityclass: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl create quota: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl create role: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl create rolebinding: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl create secret docker-registry: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl create secret generic: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl create secret tls: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl create service clusterip: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl create service externalname: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl create service loadbalancer: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl create service nodeport: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl create serviceaccount: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl create token: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl create token: <service_account_name> has a Go completion function (k8s.io/kubectl/pkg/util/completion.ResourceNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl create token: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.ResourceNameCompletionFunc.func1): reimplement it as a rotini completer
+[info] kubectl debug: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl debug: <pod> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl debug: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[unsupported] kubectl delete: SuggestFor [rm] dropped: rotini makes no suggestions unless the program asks for them
+[info] kubectl delete: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl delete: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[info] kubectl describe: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl describe: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[info] kubectl diff: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl drain: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl drain: <node> has a Go completion function (k8s.io/kubectl/pkg/util/completion.ResourceNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl drain: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.ResourceNameCompletionFunc.func1): reimplement it as a rotini completer
+[info] kubectl edit: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl edit: <resource> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl edit: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl edit: --subresource has a Go completion function (k8s.io/kubectl/pkg/cmd/util.AddSubresourceFlags.func1): reimplement it as a rotini completer
+[info] kubectl events: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl exec: <pod> has a Go completion function (k8s.io/kubectl/pkg/util/completion.PodResourceNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl exec: <command> has a Go completion function (k8s.io/kubectl/pkg/util/completion.PodResourceNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl exec: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.PodResourceNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl exec: --container has a Go completion function (k8s.io/kubectl/pkg/util/completion.ContainerCompletionFunc.func1): reimplement it as a rotini completer
+[info] kubectl explain: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl expose: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl expose: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[unsupported] kubectl get: SuggestFor [list ps] dropped: rotini makes no suggestions unless the program asks for them
+[lossy] kubectl get: <type> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl get: --output has a Go completion function (k8s.io/kubectl/pkg/cmd/get.(*PrintFlags).AddFlags.func1): reimplement it as a rotini completer
+[lossy] kubectl get: --subresource has a Go completion function (k8s.io/kubectl/pkg/cmd/util.AddSubresourceFlags.func1): reimplement it as a rotini completer
+[info] kubectl kustomize: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl kustomize: --load-restrictor has a Go completion function (sigs.k8s.io/kustomize/kustomize/v5/commands/build.AddFlagLoadRestrictorCompletion.func1): reimplement it as a rotini completer
+[info] kubectl label: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl label: <key_1> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl label: <key_n> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl label: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[info] kubectl logs: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl logs: <pod> has a Go completion function (k8s.io/kubectl/pkg/util/completion.PodResourceNameAndContainerCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl logs: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.PodResourceNameAndContainerCompletionFunc.func1): reimplement it as a rotini completer
+[info] kubectl options: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl patch: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl patch: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl patch: --subresource has a Go completion function (k8s.io/kubectl/pkg/cmd/util.AddSubresourceFlags.func1): reimplement it as a rotini completer
+[info] kubectl plugin list: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl port-forward: <type> has a Go completion function (k8s.io/kubectl/pkg/util/completion.ResourceAndPortCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl port-forward: <local_port> has a Go completion function (k8s.io/kubectl/pkg/util/completion.ResourceAndPortCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl port-forward: <local_port_n> has a Go completion function (k8s.io/kubectl/pkg/util/completion.ResourceAndPortCompletionFunc.func1): reimplement it as a rotini completer
+[info] kubectl proxy: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl replace: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl replace: --subresource has a Go completion function (k8s.io/kubectl/pkg/cmd/util.AddSubresourceFlags.func1): reimplement it as a rotini completer
+[info] kubectl rollout history: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl rollout history: <type> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl rollout history: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[info] kubectl rollout pause: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl rollout pause: <resource> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl rollout pause: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[info] kubectl rollout restart: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl rollout restart: <resource> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl rollout restart: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[info] kubectl rollout resume: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl rollout resume: <resource> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl rollout resume: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[info] kubectl rollout status: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl rollout status: <type> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl rollout status: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[info] kubectl rollout undo: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl rollout undo: <type> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl rollout undo: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[info] kubectl scale: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl scale: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[info] kubectl set env: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl set image: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl set image: <container_name_1> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl set image: <container_name_n> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl set image: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[info] kubectl set resources: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl set selector: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl set serviceaccount: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl set subject: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl taint: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl taint: <node> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl taint: <name> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl taint: <key_1> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl taint: <key_n> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl taint: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
+[info] kubectl top node: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl top node: <name> has a Go completion function (k8s.io/kubectl/pkg/util/completion.ResourceNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl top node: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.ResourceNameCompletionFunc.func1): reimplement it as a rotini completer
+[info] kubectl top pod: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl top pod: <name> has a Go completion function (k8s.io/kubectl/pkg/util/completion.ResourceNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl top pod: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.ResourceNameCompletionFunc.func1): reimplement it as a rotini completer
+[info] kubectl uncordon: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] kubectl uncordon: <node> has a Go completion function (k8s.io/kubectl/pkg/util/completion.ResourceNameCompletionFunc.func1): reimplement it as a rotini completer
+[lossy] kubectl uncordon: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.ResourceNameCompletionFunc.func1): reimplement it as a rotini completer
+[info] kubectl version: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[unsupported] kubectl wait: SuggestFor [list ps] dropped: rotini makes no suggestions unless the program asks for them
+[info] kubectl wait: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] kubectl: Cobra prints deprecation warnings itself; in rotini a hook reads rotini.Deprecations and prints them
+[info] kubectl: rotini also accepts a command's own flags after a sub-command name (kubectl apply, kubectl create)
+[info] kubectl: commands are imported in Cobra's alphabetical order; rotini lists them in the order the spec declares them
+[info] kubectl: flags and commands added inside PersistentPreRun, Run, an OnInitialize function or a plugin loader are not in the walked tree and were not imported
+imported 109 commands, 946 flags: 105 lossy, 3 unsupported, 92 info

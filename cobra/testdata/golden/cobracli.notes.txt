@@ -1,0 +1,8 @@
+[info] acmecli completion: Cobra's completion sub-commands merged into one command with a shell argument
+[info] acmecli config get: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] acmecli serve: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] acmecli: Cobra prints help for a command with sub-commands and no Run; rotini runs that command's handler, so make it print help
+[info] acmecli: rotini also accepts a command's own flags after a sub-command name (acmecli)
+[info] acmecli: commands are imported in Cobra's alphabetical order; rotini lists them in the order the spec declares them
+[lossy] acmecli: viper is linked in: its bindings (BindPFlag, AutomaticEnv, SetEnvPrefix, config paths) were not imported; declare variable: and key: on inputs, env_prefix and config_files by hand
+imported 6 commands, 5 flags: 1 lossy, 0 unsupported, 6 info

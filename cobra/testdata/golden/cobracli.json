@@ -1,0 +1,224 @@
+{
+  "format": "rotini-import/1",
+  "source": {
+    "framework": "cobra",
+    "version": "v1.10.2"
+  },
+  "command": {
+    "name": "acmecli",
+    "summary": "A brief description of your application",
+    "description": "A longer description that spans multiple lines and likely contains\nexamples and usage of using your application.",
+    "flags": [
+      {
+        "name": "help",
+        "summary": "help for acmecli",
+        "identifiers": [
+          "-h",
+          "--help"
+        ],
+        "cascading": true,
+        "short_circuit": true,
+        "schema": {
+          "type": "bool"
+        },
+        "builtin": "help"
+      },
+      {
+        "name": "config",
+        "summary": "config file (default is $HOME/.acmecli.yaml)",
+        "identifiers": [
+          "--config"
+        ],
+        "cascading": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "toggle",
+        "summary": "Help message for toggle",
+        "identifiers": [
+          "-t",
+          "--toggle"
+        ],
+        "schema": {
+          "type": "bool"
+        }
+      }
+    ],
+    "commands": [
+      {
+        "name": "completion",
+        "summary": "Generate the autocompletion script for the specified shell",
+        "arguments": [
+          {
+            "name": "shell",
+            "schema": {
+              "type": "string",
+              "required": true,
+              "enum": [
+                {
+                  "value": "bash"
+                },
+                {
+                  "value": "fish"
+                },
+                {
+                  "value": "powershell"
+                },
+                {
+                  "value": "zsh"
+                }
+              ]
+            }
+          }
+        ],
+        "flags": [
+          {
+            "name": "no-descriptions",
+            "summary": "disable completion descriptions",
+            "identifiers": [
+              "--no-descriptions"
+            ],
+            "schema": {
+              "type": "bool"
+            }
+          }
+        ],
+        "builtin": "completion"
+      },
+      {
+        "name": "config",
+        "summary": "Read and write settings",
+        "commands": [
+          {
+            "name": "get",
+            "summary": "Print one setting",
+            "examples": [
+              "acmecli config get port",
+              "acmecli config get region us-east-1"
+            ],
+            "arguments": [
+              {
+                "name": "key",
+                "schema": {
+                  "type": "string",
+                  "required": true
+                }
+              },
+              {
+                "name": "default",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              {
+                "name": "args",
+                "summary": "further arguments",
+                "schema": {
+                  "type": "[]string"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "help",
+        "summary": "Help about any command",
+        "arguments": [
+          {
+            "name": "command",
+            "schema": {
+              "type": "[]string"
+            }
+          }
+        ],
+        "builtin": "help"
+      },
+      {
+        "name": "serve",
+        "summary": "Start the server",
+        "description": "Start the HTTP server on the configured port.",
+        "arguments": [
+          {
+            "name": "args",
+            "summary": "further arguments",
+            "schema": {
+              "type": "[]string"
+            }
+          }
+        ],
+        "flags": [
+          {
+            "name": "port",
+            "summary": "port to listen on",
+            "identifiers": [
+              "-p",
+              "--port"
+            ],
+            "schema": {
+              "type": "int",
+              "default": 8080
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "notes": [
+    {
+      "path": "acmecli completion",
+      "level": "info",
+      "msg": "Cobra's completion sub-commands merged into one command with a shell argument"
+    },
+    {
+      "path": "acmecli config get",
+      "level": "info",
+      "msg": "Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras"
+    },
+    {
+      "path": "acmecli serve",
+      "level": "info",
+      "msg": "Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras"
+    },
+    {
+      "path": "acmecli",
+      "level": "info",
+      "msg": "Cobra prints help for a command with sub-commands and no Run; rotini runs that command's handler, so make it print help"
+    },
+    {
+      "path": "acmecli",
+      "level": "info",
+      "msg": "rotini also accepts a command's own flags after a sub-command name (acmecli)"
+    },
+    {
+      "path": "acmecli",
+      "level": "info",
+      "msg": "commands are imported in Cobra's alphabetical order; rotini lists them in the order the spec declares them"
+    },
+    {
+      "path": "acmecli",
+      "level": "lossy",
+      "msg": "viper is linked in: its bindings (BindPFlag, AutomaticEnv, SetEnvPrefix, config paths) were not imported; declare variable: and key: on inputs, env_prefix and config_files by hand"
+    }
+  ],
+  "hooks": [
+    {
+      "path": "acmecli config get",
+      "framework": "RunE",
+      "rotini": "Run",
+      "func": "example.com/acmecli/cmd.init.func1",
+      "file": "$FIXTURE/cmd/config_get.go",
+      "line": 15
+    },
+    {
+      "path": "acmecli serve",
+      "framework": "Run",
+      "rotini": "Run",
+      "func": "example.com/acmecli/cmd.init.func2",
+      "file": "$FIXTURE/cmd/serve.go",
+      "line": 14
+    }
+  ]
+}

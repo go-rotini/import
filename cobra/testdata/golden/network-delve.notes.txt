@@ -1,0 +1,31 @@
+[lossy] dlv: custom usage function github.com/go-delve/delve/cmd/dlv/cmds.configUsageFunc.func1: rotini generates usage from the spec
+[lossy] dlv: --api-version completes the fixed list [1 2]: add enum: if the set is closed
+[lossy] dlv: --backend completes the fixed list [default native lldb rr]: add enum: if the set is closed
+[lossy] dlv: --log-output completes the fixed list [debugger gdbwire lldbout debuglineerr rpc dap fncall minidump stack]: add enum: if the set is closed
+[info] dlv attach: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] dlv attach: <pid> has a Go completion function (github.com/go-delve/delve/cmd/dlv/cmds.New.func2): reimplement it as a rotini completer
+[lossy] dlv attach: <executable> has a Go completion function (github.com/go-delve/delve/cmd/dlv/cmds.New.func2): reimplement it as a rotini completer
+[lossy] dlv attach: <args> has a Go completion function (github.com/go-delve/delve/cmd/dlv/cmds.New.func2): reimplement it as a rotini completer
+[info] dlv backend: help topic imported as a command; its text is the description
+[info] dlv completion: Cobra's completion sub-commands merged into one command with a shell argument
+[info] dlv connect: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] dlv core: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] dlv core: <executable> has a Go completion function (github.com/go-delve/delve/cmd/dlv/cmds.New.func10): reimplement it as a rotini completer
+[lossy] dlv core: <core> has a Go completion function (github.com/go-delve/delve/cmd/dlv/cmds.New.func10): reimplement it as a rotini completer
+[lossy] dlv core: <args> has a Go completion function (github.com/go-delve/delve/cmd/dlv/cmds.New.func10): reimplement it as a rotini completer
+[info] dlv dap: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] dlv debug: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] dlv exec: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] dlv exec: <path> has a Go completion function (github.com/go-delve/delve/cmd/dlv/cmds.New.func6): reimplement it as a rotini completer
+[lossy] dlv exec: <args> has a Go completion function (github.com/go-delve/delve/cmd/dlv/cmds.New.func6): reimplement it as a rotini completer
+[info] dlv log: help topic imported as a command; its text is the description
+[info] dlv redirect: help topic imported as a command; its text is the description
+[info] dlv run: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] dlv substitute-path-guess-helper: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] dlv test: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] dlv trace: <regexp> is required after an optional placeholder in "trace [package] regexp": arguments fill in order, so it was made optional; the handler must check which were given
+[info] dlv trace: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] dlv version: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] dlv: Cobra prints help for a command with sub-commands and no Run; rotini runs that command's handler, so make it print help
+[info] dlv: commands are imported in Cobra's alphabetical order; rotini lists them in the order the spec declares them
+imported 17 commands, 42 flags: 13 lossy, 0 unsupported, 17 info

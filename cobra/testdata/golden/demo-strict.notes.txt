@@ -1,0 +1,20 @@
+[lossy] acme: --output has the custom value type "format" (*demo.format): imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[info] acme: Version "1.4.2": Cobra's version flag is kept as --version, on this command only; the version string itself belongs in the build (ldflags) or the root hook
+[info] acme completion: Cobra's completion sub-commands merged into one command with a shell argument
+[unsupported] acme deploy: SuggestFor [push] dropped: rotini makes no suggestions unless the program asks for them
+[lossy] acme deploy: --at is a time flag: the formats it accepts are not exported; set layout: if they are not RFC 3339
+[lossy] acme deploy: --hook calls a function with its value: imported as string, move the function into the handler
+[lossy] acme deploy: -n is deprecated; its message "use --namespace" is not carried across
+[lossy] acme deploy: --strategy has a Go completion function (example.com/demo.Root.func4): reimplement it as a rotini completer
+[lossy] acme deploy: --trace calls a function when set: imported as bool, move the function into the handler
+[info] acme environment: help topic imported as a command; its text is the description
+[lossy] acme logs: argument names invented (args): the Use line "logs" does not name them
+[lossy] acme logs: <args> has a Go completion function (example.com/demo.Root.func7): reimplement it as a rotini completer
+[lossy] acme rollback: <service> completes the fixed list [api web]: add enum: if the set is closed
+[lossy] acme rollback: <revision> completes the fixed list [api web]: add enum: if the set is closed
+[lossy] acme secrets: custom Args validator example.com/demo.Root.func8: the count 0..1 was found by probing; move any value checks to the handler
+[info] acme: Cobra prints deprecation warnings itself; in rotini a hook reads rotini.Deprecations and prints them
+[info] acme: Cobra prints help for a command with sub-commands and no Run; rotini runs that command's handler, so make it print help
+[info] acme: commands are imported in Cobra's alphabetical order; rotini lists them in the order the spec declares them
+[info] acme: flags and commands added inside PersistentPreRun, Run, an OnInitialize function or a plugin loader are not in the walked tree and were not imported
+imported 15 commands, 42 flags: 11 lossy, 1 unsupported, 7 info

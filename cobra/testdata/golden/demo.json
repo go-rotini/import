@@ -1,0 +1,971 @@
+{
+  "format": "rotini-import/1",
+  "source": {
+    "framework": "cobra",
+    "version": "v1.10.2"
+  },
+  "command": {
+    "name": "acme",
+    "summary": "Acme ops tool",
+    "description": "Acme ops tool manages deployments, clusters and secrets.",
+    "flags": [
+      {
+        "name": "help",
+        "summary": "help for acme",
+        "identifiers": [
+          "-h",
+          "--help"
+        ],
+        "cascading": true,
+        "short_circuit": true,
+        "schema": {
+          "type": "bool"
+        },
+        "builtin": "help"
+      },
+      {
+        "name": "config",
+        "summary": "path to FILE with settings",
+        "identifiers": [
+          "--config"
+        ],
+        "cascading": true,
+        "schema": {
+          "type": "string",
+          "placeholder": "FILE",
+          "complete": {
+            "kind": "file",
+            "extensions": [
+              "yaml",
+              "yml"
+            ]
+          }
+        }
+      },
+      {
+        "name": "context",
+        "summary": "kube context",
+        "identifiers": [
+          "--context"
+        ],
+        "cascading": true,
+        "schema": {
+          "type": "string",
+          "default": "default"
+        }
+      },
+      {
+        "name": "output",
+        "summary": "output format: json|yaml|table",
+        "identifiers": [
+          "-o",
+          "--output"
+        ],
+        "cascading": true,
+        "schema": {
+          "type": "string",
+          "default": "table"
+        }
+      },
+      {
+        "name": "verbose",
+        "summary": "increase verbosity (repeatable)",
+        "identifiers": [
+          "-v",
+          "--verbose"
+        ],
+        "cascading": true,
+        "schema": {
+          "type": "count"
+        }
+      },
+      {
+        "name": "version",
+        "summary": "version for acme",
+        "identifiers": [
+          "--version"
+        ],
+        "short_circuit": true,
+        "schema": {
+          "type": "bool"
+        },
+        "builtin": "version"
+      }
+    ],
+    "commands": [
+      {
+        "name": "cluster",
+        "summary": "Manage clusters",
+        "group": "Admin Commands",
+        "flags": [
+          {
+            "name": "region",
+            "summary": "cloud region",
+            "identifiers": [
+              "--region"
+            ],
+            "cascading": true,
+            "schema": {
+              "type": "string",
+              "default": "us-east-1"
+            }
+          }
+        ],
+        "commands": [
+          {
+            "name": "create",
+            "summary": "Create a cluster",
+            "arguments": [
+              {
+                "name": "name",
+                "schema": {
+                  "type": "string",
+                  "required": true
+                }
+              }
+            ],
+            "flags": [
+              {
+                "name": "backoff",
+                "summary": "retry backoffs",
+                "identifiers": [
+                  "--backoff"
+                ],
+                "schema": {
+                  "type": "[]duration",
+                  "separator": ","
+                }
+              },
+              {
+                "name": "nodes",
+                "summary": "node count",
+                "identifiers": [
+                  "--nodes"
+                ],
+                "schema": {
+                  "type": "uint8",
+                  "default": 3
+                }
+              }
+            ]
+          },
+          {
+            "name": "delete",
+            "summary": "Delete clusters",
+            "deprecated": "use 'acme cluster rm'",
+            "arguments": [
+              {
+                "name": "name",
+                "schema": {
+                  "type": "[]string",
+                  "required": true,
+                  "minItems": 1
+                }
+              }
+            ]
+          },
+          {
+            "name": "list",
+            "aliases": [
+              "ls"
+            ],
+            "summary": "List clusters",
+            "flags": [
+              {
+                "name": "limits",
+                "summary": "per-zone limits",
+                "identifiers": [
+                  "--limits"
+                ],
+                "schema": {
+                  "type": "map[string]int",
+                  "separator": ","
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "completion",
+        "summary": "Generate the autocompletion script for the specified shell",
+        "arguments": [
+          {
+            "name": "shell",
+            "schema": {
+              "type": "string",
+              "required": true,
+              "enum": [
+                {
+                  "value": "bash"
+                },
+                {
+                  "value": "fish"
+                },
+                {
+                  "value": "powershell"
+                },
+                {
+                  "value": "zsh"
+                }
+              ]
+            }
+          }
+        ],
+        "flags": [
+          {
+            "name": "no-descriptions",
+            "summary": "disable completion descriptions",
+            "identifiers": [
+              "--no-descriptions"
+            ],
+            "schema": {
+              "type": "bool"
+            }
+          }
+        ],
+        "builtin": "completion"
+      },
+      {
+        "name": "deploy",
+        "aliases": [
+          "d",
+          "ship"
+        ],
+        "summary": "Deploy a service",
+        "examples": [
+          "# deploy the api",
+          "acme deploy api --replicas 3",
+          "acme deploy web --set image.tag=v2"
+        ],
+        "group": "Core Commands",
+        "arguments": [
+          {
+            "name": "service",
+            "schema": {
+              "type": "string",
+              "required": true,
+              "enum": [
+                {
+                  "value": "api",
+                  "summary": "the API service"
+                },
+                {
+                  "value": "web"
+                },
+                {
+                  "value": "worker"
+                }
+              ]
+            }
+          }
+        ],
+        "flags": [
+          {
+            "name": "at",
+            "summary": "schedule the rollout",
+            "identifiers": [
+              "--at"
+            ],
+            "schema": {
+              "type": "time"
+            }
+          },
+          {
+            "name": "bind",
+            "summary": "bind address",
+            "identifiers": [
+              "--bind"
+            ],
+            "schema": {
+              "type": "ip",
+              "default": "127.0.0.1"
+            }
+          },
+          {
+            "name": "canary",
+            "summary": "canary weight",
+            "identifiers": [
+              "--canary"
+            ],
+            "schema": {
+              "type": "float64",
+              "default": 0.1
+            }
+          },
+          {
+            "name": "cert",
+            "summary": "TLS cert",
+            "identifiers": [
+              "--cert"
+            ],
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "chart-dir",
+            "summary": "chart directory",
+            "identifiers": [
+              "--chart-dir"
+            ],
+            "schema": {
+              "type": "string",
+              "complete": {
+                "kind": "directory"
+              }
+            }
+          },
+          {
+            "name": "checksum",
+            "summary": "expected checksum",
+            "identifiers": [
+              "--checksum"
+            ],
+            "schema": {
+              "type": "hexbytes"
+            }
+          },
+          {
+            "name": "color",
+            "summary": "colorize: auto|always|never",
+            "identifiers": [
+              "--color"
+            ],
+            "schema": {
+              "type": "string",
+              "default": "auto",
+              "implicit_value": "always"
+            }
+          },
+          {
+            "name": "dry-run",
+            "summary": "print the plan only",
+            "identifiers": [
+              "--dry-run"
+            ],
+            "schema": {
+              "type": "bool"
+            }
+          },
+          {
+            "name": "env",
+            "summary": "KEY=VAL env entries (repeatable)",
+            "identifiers": [
+              "--env"
+            ],
+            "schema": {
+              "type": "[]string"
+            }
+          },
+          {
+            "name": "hook",
+            "summary": "run a hook",
+            "identifiers": [
+              "--hook"
+            ],
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "json",
+            "summary": "json output",
+            "identifiers": [
+              "--json"
+            ],
+            "schema": {
+              "type": "bool"
+            }
+          },
+          {
+            "name": "key",
+            "summary": "TLS key",
+            "identifiers": [
+              "--key"
+            ],
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "namespace",
+            "summary": "namespace",
+            "identifiers": [
+              "-n",
+              "--namespace"
+            ],
+            "deprecated_identifiers": [
+              "-n"
+            ],
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "old-flag",
+            "summary": "use --strategy",
+            "identifiers": [
+              "--old-flag"
+            ],
+            "hidden": true,
+            "deprecated": "use --strategy instead",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ports",
+            "summary": "ports",
+            "identifiers": [
+              "--ports"
+            ],
+            "schema": {
+              "type": "[]int",
+              "default": [
+                80,
+                443
+              ],
+              "separator": ","
+            }
+          },
+          {
+            "name": "replicas",
+            "summary": "replica count",
+            "identifiers": [
+              "-r",
+              "--replicas"
+            ],
+            "schema": {
+              "type": "int",
+              "default": 1
+            }
+          },
+          {
+            "name": "set",
+            "summary": "helm-style overrides",
+            "identifiers": [
+              "--set"
+            ],
+            "schema": {
+              "type": "map[string]string",
+              "separator": ","
+            }
+          },
+          {
+            "name": "strategy",
+            "summary": "rollout strategy",
+            "identifiers": [
+              "--strategy"
+            ],
+            "schema": {
+              "type": "string",
+              "default": "rolling"
+            }
+          },
+          {
+            "name": "subnet",
+            "summary": "subnet CIDR",
+            "identifiers": [
+              "--subnet"
+            ],
+            "schema": {
+              "type": "cidr"
+            }
+          },
+          {
+            "name": "tags",
+            "summary": "tags to attach",
+            "identifiers": [
+              "--tags"
+            ],
+            "schema": {
+              "type": "[]string",
+              "default": [
+                "a",
+                "b"
+              ],
+              "separator": ","
+            }
+          },
+          {
+            "name": "timeout",
+            "summary": "rollout timeout",
+            "identifiers": [
+              "--timeout"
+            ],
+            "schema": {
+              "type": "duration",
+              "default": "5m0s"
+            }
+          },
+          {
+            "name": "token",
+            "summary": "API token",
+            "identifiers": [
+              "--token"
+            ],
+            "hidden": true,
+            "schema": {
+              "type": "string",
+              "complete": {
+                "kind": "none"
+              }
+            }
+          },
+          {
+            "name": "trace",
+            "summary": "print a trace",
+            "identifiers": [
+              "--trace"
+            ],
+            "schema": {
+              "type": "bool"
+            }
+          },
+          {
+            "name": "wait",
+            "summary": "wait for rollout",
+            "identifiers": [
+              "--wait"
+            ],
+            "schema": {
+              "type": "bool",
+              "default": true
+            }
+          },
+          {
+            "name": "yaml",
+            "summary": "yaml output",
+            "identifiers": [
+              "--yaml"
+            ],
+            "schema": {
+              "type": "bool"
+            }
+          }
+        ],
+        "flag_groups": [
+          {
+            "kind": "required_together",
+            "flags": [
+              "cert",
+              "key"
+            ]
+          },
+          {
+            "kind": "mutually_exclusive",
+            "flags": [
+              "json",
+              "yaml"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "environment",
+        "summary": "Environment variables acme reads",
+        "description": "ACME_TOKEN holds the API token.\nACME_CONTEXT picks the context."
+      },
+      {
+        "name": "exec",
+        "summary": "Run a command in a pod",
+        "passthrough": true,
+        "arguments": [
+          {
+            "name": "args",
+            "summary": "arguments passed through as typed",
+            "schema": {
+              "type": "[]string"
+            }
+          }
+        ]
+      },
+      {
+        "name": "get",
+        "summary": "Read a config key",
+        "arguments": [
+          {
+            "name": "key",
+            "schema": {
+              "type": "string",
+              "required": true
+            }
+          },
+          {
+            "name": "args",
+            "summary": "further arguments",
+            "schema": {
+              "type": "[]string"
+            }
+          }
+        ]
+      },
+      {
+        "name": "help",
+        "summary": "Help about any command",
+        "arguments": [
+          {
+            "name": "command",
+            "schema": {
+              "type": "[]string"
+            }
+          }
+        ],
+        "builtin": "help"
+      },
+      {
+        "name": "logs",
+        "summary": "Tail logs of pods",
+        "group": "Core Commands",
+        "arguments": [
+          {
+            "name": "args",
+            "schema": {
+              "type": "[]string",
+              "required": true,
+              "minItems": 1
+            }
+          }
+        ],
+        "flags": [
+          {
+            "name": "follow",
+            "summary": "follow",
+            "identifiers": [
+              "-f",
+              "--follow"
+            ],
+            "schema": {
+              "type": "bool"
+            }
+          },
+          {
+            "name": "since-seconds",
+            "summary": "only newer logs",
+            "identifiers": [
+              "--since-seconds"
+            ],
+            "schema": {
+              "type": "int64"
+            }
+          }
+        ]
+      },
+      {
+        "name": "rollback",
+        "summary": "Roll back a service",
+        "group": "Core Commands",
+        "arguments": [
+          {
+            "name": "service",
+            "schema": {
+              "type": "string",
+              "required": true
+            }
+          },
+          {
+            "name": "revision",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "flags": [
+          {
+            "name": "last",
+            "summary": "previous revision",
+            "identifiers": [
+              "--last"
+            ],
+            "schema": {
+              "type": "bool"
+            }
+          },
+          {
+            "name": "reason",
+            "summary": "audit reason",
+            "identifiers": [
+              "--reason"
+            ],
+            "schema": {
+              "type": "string",
+              "required": true
+            }
+          },
+          {
+            "name": "to",
+            "summary": "specific revision",
+            "identifiers": [
+              "--to"
+            ],
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "flag_groups": [
+          {
+            "kind": "one_of",
+            "flags": [
+              "last",
+              "to"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "secrets",
+        "summary": "Show secrets",
+        "group": "Admin Commands",
+        "hidden": true,
+        "arguments": [
+          {
+            "name": "name",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "flags": [
+          {
+            "name": "value",
+            "summary": "secret value",
+            "identifiers": [
+              "--value"
+            ],
+            "schema": {
+              "type": "base64bytes"
+            }
+          }
+        ]
+      },
+      {
+        "name": "version",
+        "summary": "Print version",
+        "arguments": [
+          {
+            "name": "args",
+            "summary": "further arguments",
+            "schema": {
+              "type": "[]string"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "notes": [
+    {
+      "path": "acme",
+      "level": "lossy",
+      "msg": "--output has the custom value type \"format\" (*demo.format): imported as string; use a type with import: and a TextUnmarshaler, or an enum"
+    },
+    {
+      "path": "acme",
+      "level": "info",
+      "msg": "Version \"1.4.2\": Cobra's version flag is kept as --version, on this command only; the version string itself belongs in the build (ldflags) or the root hook"
+    },
+    {
+      "path": "acme completion",
+      "level": "info",
+      "msg": "Cobra's completion sub-commands merged into one command with a shell argument"
+    },
+    {
+      "path": "acme deploy",
+      "level": "unsupported",
+      "msg": "SuggestFor [push] dropped: rotini makes no suggestions unless the program asks for them"
+    },
+    {
+      "path": "acme deploy",
+      "level": "lossy",
+      "msg": "--at is a time flag: the formats it accepts are not exported; set layout: if they are not RFC 3339"
+    },
+    {
+      "path": "acme deploy",
+      "level": "lossy",
+      "msg": "--hook calls a function with its value: imported as string, move the function into the handler"
+    },
+    {
+      "path": "acme deploy",
+      "level": "lossy",
+      "msg": "-n is deprecated; its message \"use --namespace\" is not carried across"
+    },
+    {
+      "path": "acme deploy",
+      "level": "lossy",
+      "msg": "--strategy has a Go completion function (example.com/demo.Root.func4): reimplement it as a rotini completer"
+    },
+    {
+      "path": "acme deploy",
+      "level": "lossy",
+      "msg": "--trace calls a function when set: imported as bool, move the function into the handler"
+    },
+    {
+      "path": "acme environment",
+      "level": "info",
+      "msg": "help topic imported as a command; its text is the description"
+    },
+    {
+      "path": "acme get",
+      "level": "info",
+      "msg": "Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras"
+    },
+    {
+      "path": "acme logs",
+      "level": "lossy",
+      "msg": "argument names invented (args): the Use line \"logs\" does not name them"
+    },
+    {
+      "path": "acme logs",
+      "level": "lossy",
+      "msg": "<args> has a Go completion function (example.com/demo.Root.func7): reimplement it as a rotini completer"
+    },
+    {
+      "path": "acme rollback",
+      "level": "lossy",
+      "msg": "<service> completes the fixed list [api web]: add enum: if the set is closed"
+    },
+    {
+      "path": "acme rollback",
+      "level": "lossy",
+      "msg": "<revision> completes the fixed list [api web]: add enum: if the set is closed"
+    },
+    {
+      "path": "acme secrets",
+      "level": "lossy",
+      "msg": "custom Args validator example.com/demo.Root.func8: the count 0..1 was found by probing; move any value checks to the handler"
+    },
+    {
+      "path": "acme version",
+      "level": "info",
+      "msg": "Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras"
+    },
+    {
+      "path": "acme",
+      "level": "info",
+      "msg": "Cobra prints deprecation warnings itself; in rotini a hook reads rotini.Deprecations and prints them"
+    },
+    {
+      "path": "acme",
+      "level": "info",
+      "msg": "Cobra prints help for a command with sub-commands and no Run; rotini runs that command's handler, so make it print help"
+    },
+    {
+      "path": "acme",
+      "level": "info",
+      "msg": "commands are imported in Cobra's alphabetical order; rotini lists them in the order the spec declares them"
+    },
+    {
+      "path": "acme",
+      "level": "info",
+      "msg": "flags and commands added inside PersistentPreRun, Run, an OnInitialize function or a plugin loader are not in the walked tree and were not imported"
+    }
+  ],
+  "hooks": [
+    {
+      "path": "acme",
+      "framework": "PersistentPreRunE",
+      "rotini": "CascadingPreRun",
+      "func": "example.com/demo.Root.func1",
+      "file": "$FIXTURE/demo.go",
+      "line": 34
+    },
+    {
+      "path": "acme cluster create",
+      "framework": "RunE",
+      "rotini": "Run",
+      "func": "example.com/demo.run",
+      "file": "$FIXTURE/demo.go",
+      "line": 26
+    },
+    {
+      "path": "acme cluster delete",
+      "framework": "RunE",
+      "rotini": "Run",
+      "func": "example.com/demo.run",
+      "file": "$FIXTURE/demo.go",
+      "line": 26
+    },
+    {
+      "path": "acme cluster list",
+      "framework": "RunE",
+      "rotini": "Run",
+      "func": "example.com/demo.run",
+      "file": "$FIXTURE/demo.go",
+      "line": 26
+    },
+    {
+      "path": "acme deploy",
+      "framework": "PreRunE",
+      "rotini": "PreRun",
+      "func": "example.com/demo.Root.func2",
+      "file": "$FIXTURE/demo.go",
+      "line": 53
+    },
+    {
+      "path": "acme deploy",
+      "framework": "RunE",
+      "rotini": "Run",
+      "func": "example.com/demo.run",
+      "file": "$FIXTURE/demo.go",
+      "line": 26
+    },
+    {
+      "path": "acme deploy",
+      "framework": "PostRun",
+      "rotini": "PostRun",
+      "func": "example.com/demo.Root.func3",
+      "file": "$FIXTURE/demo.go",
+      "line": 55
+    },
+    {
+      "path": "acme exec",
+      "framework": "RunE",
+      "rotini": "Run",
+      "func": "example.com/demo.run",
+      "file": "$FIXTURE/demo.go",
+      "line": 26
+    },
+    {
+      "path": "acme get",
+      "framework": "RunE",
+      "rotini": "Run",
+      "func": "example.com/demo.run",
+      "file": "$FIXTURE/demo.go",
+      "line": 26
+    },
+    {
+      "path": "acme logs",
+      "framework": "RunE",
+      "rotini": "Run",
+      "func": "example.com/demo.run",
+      "file": "$FIXTURE/demo.go",
+      "line": 26
+    },
+    {
+      "path": "acme rollback",
+      "framework": "RunE",
+      "rotini": "Run",
+      "func": "example.com/demo.run",
+      "file": "$FIXTURE/demo.go",
+      "line": 26
+    },
+    {
+      "path": "acme secrets",
+      "framework": "RunE",
+      "rotini": "Run",
+      "func": "example.com/demo.run",
+      "file": "$FIXTURE/demo.go",
+      "line": 26
+    },
+    {
+      "path": "acme version",
+      "framework": "Run",
+      "rotini": "Run",
+      "func": "example.com/demo.Root.func9",
+      "file": "$FIXTURE/demo.go",
+      "line": 139
+    }
+  ]
+}
