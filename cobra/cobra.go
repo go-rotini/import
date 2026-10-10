@@ -3,6 +3,7 @@ package cobra
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 
 	imp "github.com/go-rotini/import"
@@ -144,6 +145,9 @@ func (im *importer) command(c *cobra.Command, parent string) *imp.Command {
 	rc.Arguments = im.arguments(c, path)
 	im.argCompletion(c, path, rc.Arguments)
 	rc.Flags, rc.FlagGroups = im.flags(c, path)
+	if !interspersed(c.Flags()) {
+		im.optionsFirst(path, rc)
+	}
 	if c.HasSubCommands() && !c.Runnable() {
 		im.groupNoRun = true
 	}
@@ -255,6 +259,23 @@ func (im *importer) passthrough(c *cobra.Command, path string, rc *imp.Command) 
 	if own > 0 || c.HasSubCommands() {
 		im.notef(path, imp.Unsupported, "DisableFlagParsing with its own flags or sub-commands: a passthrough command has neither, so they were dropped")
 	}
+}
+
+// interspersed reports whether flags may follow a positional in fs, the flag set Cobra parses
+// a command's words with. pflag's SetInterspersed has no getter, so the unexported field is
+// read; a pflag without it is taken as interspersed, its default.
+func interspersed(fs *pflag.FlagSet) bool {
+	v := reflect.ValueOf(fs).Elem().FieldByName("interspersed")
+	return !v.IsValid() || v.Kind() != reflect.Bool || v.Bool()
+}
+
+// optionsFirst imports SetInterspersed(false): flags stop at the command's first argument.
+func (im *importer) optionsFirst(path string, rc *imp.Command) {
+	if len(rc.Arguments) == 0 {
+		im.notef(path, imp.Info, "SetInterspersed(false) dropped: the command takes no arguments, so there is no first argument for flags to stop at")
+		return
+	}
+	rc.OptionsFirst = true
 }
 
 // programNotes adds the notes that concern the whole import, once each.

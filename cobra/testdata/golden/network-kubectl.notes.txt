@@ -29,7 +29,7 @@
 [info] kubectl auth whoami: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
 [info] kubectl autoscale: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
 [lossy] kubectl autoscale: <args> has a Go completion function (k8s.io/kubectl/pkg/util/completion.resourceTypeAndNameCompletionFunc.func1): reimplement it as a rotini completer
-[lossy] kubectl autoscale: --max is required and has the default -1: Cobra still demands it on the command line, while rotini's default satisfies it
+[lossy] kubectl autoscale: --max is required and has the default -1: the default was dropped, since Cobra demands the flag on the command line anyway
 [info] kubectl certificate approve: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
 [info] kubectl certificate deny: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
 [info] kubectl cluster-info dump: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras

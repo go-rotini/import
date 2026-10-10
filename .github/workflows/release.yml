@@ -1,8 +1,6 @@
 name: Release
 
-# Releases the root module (tags vX.Y.Z) from conventional commits. The importer modules are
-# released by hand with their own tag prefix (cobra/vX.Y.Z), after the root version their
-# go.mod requires is published.
+# Releases the module (tags vX.Y.Z), importers included, from conventional commits.
 
 on:
   workflow_run:
@@ -17,7 +15,7 @@ permissions:
 
 jobs:
   release:
-    if: github.event.workflow_run.conclusion == 'success'
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -27,6 +25,8 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: '1.27.x'
+          check-latest: true
+          cache: false
 
       - name: Determine version
         uses: go-semantic-release/action@2e9dc4247a6004f8377781bef4cb9dad273a741f # v1

@@ -1,17 +1,14 @@
 version: 2
 updates:
+  # go.mod requires the oldest Cobra the Cobra importer builds with on purpose, so that
+  # importing never raises the Cobra version of the program it reads.
   - package-ecosystem: gomod
     directory: /
     schedule:
       interval: weekly
-
-  # The Cobra importer's go.mod requires the oldest Cobra it builds with on purpose, so that
-  # importing never raises the Cobra version of the program it reads. Only its other
-  # requirements are kept current.
-  - package-ecosystem: gomod
-    directory: /cobra
-    schedule:
-      interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
     ignore:
       - dependency-name: github.com/spf13/cobra
       - dependency-name: github.com/spf13/pflag
@@ -21,3 +18,6 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope

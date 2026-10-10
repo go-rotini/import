@@ -129,7 +129,8 @@ func (im *importer) flag(c *cobra.Command, path string, f *pflag.Flag, cascading
 	if v := f.Annotations[cobra.BashCompOneRequiredFlag]; len(v) > 0 && v[0] == "true" {
 		s.Required = true
 		if s.Default != nil {
-			im.notef(path, imp.Lossy, "--%s is required and has the default %v: Cobra still demands it on the command line, while rotini's default satisfies it", name, s.Default)
+			im.notef(path, imp.Lossy, "--%s is required and has the default %v: the default was dropped, since Cobra demands the flag on the command line anyway", name, s.Default)
+			s.Default = nil
 		}
 	}
 	if exts, ok := f.Annotations[cobra.BashCompFilenameExt]; ok {

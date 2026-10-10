@@ -26,9 +26,10 @@ func sample() *imp.Result {
 				{Name: "big", Identifiers: []string{"--big"}, Schema: &imp.Schema{Type: "uint64", Default: uint64(18446744073709551615)}},
 			},
 			Commands: []*imp.Command{{
-				Name:       "deploy",
-				Arguments:  []*imp.Argument{{Name: "svc", Schema: &imp.Schema{Type: "[]string", Required: true, MinItems: &two, Items: &imp.Schema{Type: "string", Enum: []imp.EnumValue{{Value: "api", Summary: "the <api>"}}}}}},
-				FlagGroups: []*imp.FlagGroup{{Kind: "one_of", Flags: []string{"a", "b"}}},
+				Name:         "deploy",
+				OptionsFirst: true,
+				Arguments:    []*imp.Argument{{Name: "svc", Schema: &imp.Schema{Type: "[]string", Required: true, MinItems: &two, Items: &imp.Schema{Type: "string", Enum: []imp.EnumValue{{Value: "api", Summary: "the <api>"}}}}}},
+				FlagGroups:   []*imp.FlagGroup{{Kind: "one_of", Flags: []string{"a", "b"}}},
 			}},
 		},
 		Notes: []imp.Note{

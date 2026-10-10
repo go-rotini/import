@@ -2,12 +2,12 @@
 
 Importers that read an existing Go command-line program's live command tree into a framework-neutral description, which the [rotini](https://github.com/go-rotini/rotini) companion CLI turns into a spec, a conf and handler stubs. Start with `rotini import cobra <pkg>`; this repository is what that command runs inside your package.
 
-The repository holds one module per framework, so importing one framework never adds another to your module graph:
+One module holds the description and one package per framework:
 
-| Module | Import path | What it is |
-|---|---|---|
-| root | `github.com/go-rotini/import` | The description: the command tree in the shape of a rotini spec, the notes on what could not be carried across, and pointers to the hooks to port. Standard library only. |
-| cobra | `github.com/go-rotini/import/cobra` | `FromCobra(*cobra.Command, Options)`, built against Cobra 1.6 and later. |
+| Package | What it is |
+|---|---|
+| `github.com/go-rotini/import` | The description: the command tree in the shape of a rotini spec, the notes on what could not be carried across, and pointers to the hooks to port. |
+| `github.com/go-rotini/import/cobra` | `FromCobra(*cobra.Command, Options)`, built against Cobra 1.6 and later. |
 
 ## Features
 
@@ -23,7 +23,7 @@ The repository holds one module per framework, so importing one framework never 
 You do not normally install this yourself: `rotini import cobra` adds it to a temporary copy of your `go.mod` for the length of the import and leaves your own files untouched. To call it directly:
 
 ```bash
-go get github.com/go-rotini/import/cobra
+go get github.com/go-rotini/import
 ```
 
 Requires Go 1.22 or later, and Cobra 1.6 or later.
@@ -66,16 +66,17 @@ func main() {
 | the root's display-name annotation | `display_name` | |
 | `PersistentFlags()` / local flags | flags with / without `cascading` | rotini also accepts a command's own flags after a sub-command name |
 | pflag types, `DefValue`, `NoOptDefVal` | `type`, `default`, `implicit_value` | `time` layouts, custom `pflag.Value` and callback flags are lossy |
-| required, filename and dirname annotations | `required`, `complete: {kind: file \| directory}` | |
+| required, filename and dirname annotations | `required`, `complete: {kind: file \| directory}` | a required flag's default is dropped |
 | the three flag-group annotations | `required_together`, `at_least_one`, `mutually_exclusive`; the last two over one set become `one_of` | groups mixing a command's own and inherited flags are dropped |
 | stock `Args` validators | argument counts | custom validators are probed; their value checks are lost |
 | `ValidArgs` | an enum on the first argument, with descriptions | |
 | `ValidArgsFunction`, flag completion functions | `complete: {kind: none}` for `NoFileCompletions` | other functions are noted for reimplementing |
 | `DisableFlagParsing` | a passthrough command | |
+| `Flags().SetInterspersed(false)` | `options_first: true` | read from pflag's unexported setting, which has no getter; dropped with a note on a command that takes no arguments |
 | run hooks | hook pointers (file and line) | the code itself is ported by hand |
 
 Flags or commands that a program registers lazily (inside a run hook, an `OnInitialize` function, a plugin loader or a wrapper around `Execute`) are not in the tree when it is walked, so they are not imported. Neither are viper bindings: when viper is linked in, the import says so.
 
 ## Versioning
 
-Each module is versioned and released on its own: tags `vX.Y.Z` for the root module and `cobra/vX.Y.Z` for the Cobra importer. The description's format has its own major version, and the rotini companion CLI pins the importer version it was tested with.
+The module is released as a whole, with tags `vX.Y.Z`. The description's format has its own major version, and the rotini companion CLI pins the importer version it was tested with.

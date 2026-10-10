@@ -6,6 +6,6 @@ Reads a live [Cobra](https://github.com/spf13/cobra) command tree into the descr
 res, err := cobraimport.FromCobra(rootCmd, cobraimport.Options{})
 ```
 
-Builds against Cobra 1.6 and later; its `go.mod` requires the oldest, so it never raises the Cobra version of the program it reads. Flag completion functions are visible from Cobra 1.8 on.
+Builds against Cobra 1.6 and later; the module's `go.mod` requires the oldest, so it never raises the Cobra version of the program it reads. Flag completion functions are visible from Cobra 1.8 on.
 
 See the [repository README](https://github.com/go-rotini/import#readme) for what carries across and what is reported.
