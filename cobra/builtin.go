@@ -12,7 +12,7 @@ import (
 
 const (
 	cobraModule    = "github.com/spf13/cobra"
-	importerModule = "github.com/go-rotini/import/cobra"
+	importerModule = "github.com/go-rotini/import"
 	cobraPkgPrefix = cobraModule + "."
 )
 

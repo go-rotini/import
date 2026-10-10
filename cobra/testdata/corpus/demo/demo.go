@@ -27,10 +27,10 @@ func run(cmd *cobra.Command, args []string) error { fmt.Println(cmd.CommandPath(
 
 func Root() *cobra.Command {
 	root := &cobra.Command{
-		Use:     "acme",
-		Short:   "Acme ops tool",
-		Long:    "Acme ops tool manages deployments, clusters and secrets.",
-		Version: "1.4.2",
+		Use:               "acme",
+		Short:             "Acme ops tool",
+		Long:              "Acme ops tool manages deployments, clusters and secrets.",
+		Version:           "1.4.2",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error { return nil },
 	}
 	root.AddGroup(&cobra.Group{ID: "core", Title: "Core Commands:"}, &cobra.Group{ID: "admin", Title: "Admin Commands:"})

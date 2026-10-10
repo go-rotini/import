@@ -48,6 +48,9 @@ func TestCorpus(t *testing.T) {
 			if after := snapshot(t, dir); after != before {
 				t.Fatalf("the import changed the fixture's files")
 			}
+			if res.Source.Importer == "" {
+				t.Fatal("the description does not name the importer's version")
+			}
 			normalize(res, dir)
 			var js bytes.Buffer
 			if err := imp.Write(&js, res); err != nil {
@@ -146,13 +149,15 @@ func runImport(t *testing.T, dir, pkg, root string, strict bool) (*imp.Result, s
 	// The companion runs `go get -modfile=<modfile> github.com/go-rotini/import/cobra@<v>`.
 	// The corpus points the modfile at this checkout instead.
 	goCmd(t, dir, nil, "mod", "edit", "-modfile="+modfile,
-		"-require=github.com/go-rotini/import/cobra@v0.0.0",
-		"-replace=github.com/go-rotini/import/cobra="+shim,
 		"-require=github.com/go-rotini/import@v0.0.0",
 		"-replace=github.com/go-rotini/import="+filepath.Dir(shim))
 
-	pkgDir := strings.TrimSpace(goCmd(t, dir, nil, "list", "-modfile="+modfile, "-mod=mod", "-f", "{{.Dir}}", pkg))
-	pkgName := strings.TrimSpace(goCmd(t, dir, nil, "list", "-modfile="+modfile, "-mod=mod", "-f", "{{.Name}}", pkg))
+	listed := goCmd(t, dir, nil, "list", "-modfile="+modfile, "-mod=mod", "-f", "{{.Name}}\n{{.Dir}}", pkg)
+	pkgName, pkgDir, ok := strings.Cut(strings.TrimSpace(listed), "\n")
+	if !ok {
+		t.Fatalf("go list %s: unexpected output %q", pkg, listed)
+	}
+	pkgDir = strings.TrimSpace(pkgDir)
 	testName := "TestRotiniImport_" + randomSuffix(t)
 	testFile := filepath.Join(work, "zz_rotini_import_test.go")
 	src := fmt.Sprintf(testTemplate, pkgName, testName, root, strict)
@@ -234,9 +239,11 @@ func goCmd(t *testing.T, dir string, env []string, args ...string) string {
 	cmd := exec.Command("go", args...)
 	cmd.Dir = dir
 	cmd.Env = append(goEnv(), env...)
-	out, err := cmd.CombinedOutput()
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
 	if err != nil {
-		t.Fatalf("go %s: %v\n%s", strings.Join(args, " "), err, out)
+		t.Fatalf("go %s: %v\n%s", strings.Join(args, " "), err, stderr.Bytes())
 	}
 	return string(out)
 }
