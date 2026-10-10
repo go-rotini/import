@@ -33,6 +33,7 @@ jobs:
         id: semrel
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-initial-development-versions: true
           dry: true
 
       - name: Generate SBOM
