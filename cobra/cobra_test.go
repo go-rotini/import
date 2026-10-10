@@ -423,6 +423,9 @@ func TestFlagDetails(t *testing.T) {
 		t.Fatal("--name not required")
 	}
 	wantNote(t, res, "app", imp.Lossy, "--region is required and has the default eu")
+	if s := flagNamed(t, c, "region").Schema; !s.Required || s.Default != nil {
+		t.Fatalf("region %+v: want required with no default", s)
+	}
 	if s := flagNamed(t, c, "color").Schema; s.ImplicitValue != "always" || s.Default != "auto" {
 		t.Fatalf("color %+v", s)
 	}
@@ -651,6 +654,35 @@ func TestPassthrough(t *testing.T) {
 	noNote(t, res, "app exec", "DisableFlagParsing")
 	noNote(t, res, "app exec", "were dropped")
 	wantNote(t, res, "app wrap", imp.Unsupported, "were dropped")
+}
+
+func TestOptionsFirst(t *testing.T) {
+	root := &cobra.Command{Use: "app"}
+	ssh := &cobra.Command{Use: "ssh <host> [command...]", Run: run}
+	ssh.Flags().BoolP("verbose", "v", false, "")
+	ssh.Flags().SetInterspersed(false)
+	status := &cobra.Command{Use: "status", Args: cobra.NoArgs, Run: run}
+	status.Flags().SetInterspersed(false)
+	exec := &cobra.Command{Use: "exec", DisableFlagParsing: true, Run: run}
+	exec.Flags().SetInterspersed(false)
+	plain := &cobra.Command{Use: "plain <x>", Run: run}
+	root.AddCommand(ssh, status, exec, plain)
+	res := importTree(t, root, cobraimport.Options{})
+	if !find(t, res, "app ssh").OptionsFirst {
+		t.Fatal("ssh: SetInterspersed(false) not imported as options_first")
+	}
+	noNote(t, res, "app ssh", "SetInterspersed")
+	if find(t, res, "app status").OptionsFirst {
+		t.Fatal("status takes no arguments but got options_first")
+	}
+	wantNote(t, res, "app status", imp.Info, "SetInterspersed(false) dropped")
+	if c := find(t, res, "app exec"); c.OptionsFirst || !c.Passthrough {
+		t.Fatalf("exec: options_first=%v passthrough=%v", c.OptionsFirst, c.Passthrough)
+	}
+	noNote(t, res, "app exec", "SetInterspersed")
+	if find(t, res, "app plain").OptionsFirst || res.Command.OptionsFirst {
+		t.Fatal("options_first set without SetInterspersed(false)")
+	}
 }
 
 func TestCommandFields(t *testing.T) {

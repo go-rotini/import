@@ -44,11 +44,14 @@ type Command struct {
 	Deprecated  string   `json:"deprecated,omitempty"`
 	// Passthrough makes every word after the command's name reach its last argument as typed,
 	// with no flag parsing.
-	Passthrough bool         `json:"passthrough,omitempty"`
-	Arguments   []*Argument  `json:"arguments,omitempty"`
-	Flags       []*Flag      `json:"flags,omitempty"`
-	FlagGroups  []*FlagGroup `json:"flag_groups,omitempty"`
-	Commands    []*Command   `json:"commands,omitempty"`
+	Passthrough bool `json:"passthrough,omitempty"`
+	// OptionsFirst stops flag parsing at the command's first argument: from that word on,
+	// every word is an argument.
+	OptionsFirst bool         `json:"options_first,omitempty"`
+	Arguments    []*Argument  `json:"arguments,omitempty"`
+	Flags        []*Flag      `json:"flags,omitempty"`
+	FlagGroups   []*FlagGroup `json:"flag_groups,omitempty"`
+	Commands     []*Command   `json:"commands,omitempty"`
 	// Builtin marks a command the framework adds on its own: "help" or "completion".
 	// It is not a spec key; a spec writer uses it to emit its own seed for that command.
 	Builtin string `json:"builtin,omitempty"`

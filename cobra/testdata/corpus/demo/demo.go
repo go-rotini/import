@@ -135,6 +135,11 @@ func Root() *cobra.Command {
 	// exec: DisableFlagParsing -> passthrough
 	exec := &cobra.Command{Use: "exec -- CMD [ARGS...]", Short: "Run a command in a pod", DisableFlagParsing: true, RunE: run}
 
+	// ssh: SetInterspersed(false) -> options_first
+	ssh := &cobra.Command{Use: "ssh <node> [command...]", Short: "Run a command on a node", Args: cobra.MinimumNArgs(1), RunE: run}
+	ssh.Flags().BoolP("tty", "t", false, "allocate a terminal")
+	ssh.Flags().SetInterspersed(false)
+
 	// version: plain no-arg leaf, Args unset
 	version := &cobra.Command{Use: "version", Short: "Print version", Run: func(*cobra.Command, []string) {}}
 
@@ -144,6 +149,6 @@ func Root() *cobra.Command {
 	// environment: a help topic (no Run, no sub-commands)
 	topic := &cobra.Command{Use: "environment", Short: "Environment variables acme reads", Long: "ACME_TOKEN holds the API token.\nACME_CONTEXT picks the context."}
 
-	root.AddCommand(deploy, rollback, logs, cluster, secrets, exec, version, cfg, topic)
+	root.AddCommand(deploy, rollback, logs, cluster, secrets, exec, ssh, version, cfg, topic)
 	return root
 }

@@ -66,12 +66,13 @@ func main() {
 | the root's display-name annotation | `display_name` | |
 | `PersistentFlags()` / local flags | flags with / without `cascading` | rotini also accepts a command's own flags after a sub-command name |
 | pflag types, `DefValue`, `NoOptDefVal` | `type`, `default`, `implicit_value` | `time` layouts, custom `pflag.Value` and callback flags are lossy |
-| required, filename and dirname annotations | `required`, `complete: {kind: file \| directory}` | |
+| required, filename and dirname annotations | `required`, `complete: {kind: file \| directory}` | a required flag's default is dropped |
 | the three flag-group annotations | `required_together`, `at_least_one`, `mutually_exclusive`; the last two over one set become `one_of` | groups mixing a command's own and inherited flags are dropped |
 | stock `Args` validators | argument counts | custom validators are probed; their value checks are lost |
 | `ValidArgs` | an enum on the first argument, with descriptions | |
 | `ValidArgsFunction`, flag completion functions | `complete: {kind: none}` for `NoFileCompletions` | other functions are noted for reimplementing |
 | `DisableFlagParsing` | a passthrough command | |
+| `Flags().SetInterspersed(false)` | `options_first: true` | read from pflag's unexported setting, which has no getter; dropped with a note on a command that takes no arguments |
 | run hooks | hook pointers (file and line) | the code itself is ported by hand |
 
 Flags or commands that a program registers lazily (inside a run hook, an `OnInitialize` function, a plugin loader or a wrapper around `Execute`) are not in the tree when it is walked, so they are not imported. Neither are viper bindings: when viper is linked in, the import says so.

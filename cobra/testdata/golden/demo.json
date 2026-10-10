@@ -741,6 +741,39 @@
         ]
       },
       {
+        "name": "ssh",
+        "summary": "Run a command on a node",
+        "options_first": true,
+        "arguments": [
+          {
+            "name": "node",
+            "schema": {
+              "type": "string",
+              "required": true
+            }
+          },
+          {
+            "name": "command",
+            "schema": {
+              "type": "[]string"
+            }
+          }
+        ],
+        "flags": [
+          {
+            "name": "tty",
+            "summary": "allocate a terminal",
+            "identifiers": [
+              "-t",
+              "--tty"
+            ],
+            "schema": {
+              "type": "bool"
+            }
+          }
+        ]
+      },
+      {
         "name": "version",
         "summary": "Print version",
         "arguments": [
@@ -960,12 +993,20 @@
       "line": 26
     },
     {
+      "path": "acme ssh",
+      "framework": "RunE",
+      "rotini": "Run",
+      "func": "example.com/demo.run",
+      "file": "$FIXTURE/demo.go",
+      "line": 26
+    },
+    {
       "path": "acme version",
       "framework": "Run",
       "rotini": "Run",
       "func": "example.com/demo.Root.func9",
       "file": "$FIXTURE/demo.go",
-      "line": 139
+      "line": 144
     }
   ]
 }
