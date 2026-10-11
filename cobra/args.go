@@ -6,154 +6,13 @@ import (
 	"strings"
 
 	imp "github.com/go-rotini/import"
+	"github.com/go-rotini/import/internal/walk"
 	"github.com/spf13/cobra"
 )
 
 // probeLimit is the most positionals an Args validator is probed with. A validator that
 // accepts this many is taken to be unbounded.
 const probeLimit = 8
-
-type useArg struct {
-	name     string
-	optional bool
-	variadic bool
-}
-
-// parseUse reads the argument placeholders that follow the command name in a Use line.
-// Flag placeholders ("[flags]", "-f FILE", "--") are skipped; each other placeholder gives
-// one argument named after its first word.
-func parseUse(use string) []useArg {
-	fields := useFields(use)
-	if len(fields) < 2 {
-		return nil
-	}
-	var out []useArg
-	for _, f := range fields[1:] {
-		inner := strings.TrimSpace(strings.ReplaceAll(unwrap(f), "...", " "))
-		lead := strings.TrimLeft(inner, "([<")
-		if lead == "" || strings.HasPrefix(lead, "-") || strings.HasPrefix(lead, "|") {
-			continue
-		}
-		switch strings.ToLower(strings.Fields(lead)[0]) {
-		case "flags", "options", "global":
-			continue
-		}
-		name := argName(leadingWord(lead))
-		if name == "" {
-			continue
-		}
-		bare := strings.TrimSuffix(f, "...")
-		out = append(out, useArg{
-			name:     name,
-			optional: strings.HasPrefix(bare, "[") && strings.HasSuffix(bare, "]"),
-			variadic: strings.Contains(f, "..."),
-		})
-	}
-	return out
-}
-
-// useFields splits a Use line on spaces, keeping a bracketed group such as
-// "[trace directory]" or "(-f FILE | TYPE NAME)" as one field.
-func useFields(use string) []string {
-	var out []string
-	depth, start := 0, -1
-	for i, r := range use {
-		switch r {
-		case '[', '<', '(':
-			depth++
-		case ']', '>', ')':
-			if depth > 0 {
-				depth--
-			}
-		}
-		if (r == ' ' || r == '\t' || r == '\n') && depth == 0 {
-			if start >= 0 {
-				out = append(out, use[start:i])
-				start = -1
-			}
-			continue
-		}
-		if start < 0 {
-			start = i
-		}
-	}
-	if start >= 0 {
-		out = append(out, use[start:])
-	}
-	return out
-}
-
-// unwrap removes one layer of enclosing brackets from a Use field.
-func unwrap(f string) string {
-	f = strings.TrimSuffix(f, "...")
-	if len(f) >= 2 {
-		switch {
-		case f[0] == '[' && f[len(f)-1] == ']',
-			f[0] == '<' && f[len(f)-1] == '>',
-			f[0] == '(' && f[len(f)-1] == ')':
-			return f[1 : len(f)-1]
-		}
-	}
-	return strings.Trim(f, "[]<>()")
-}
-
-// leadingWord returns the first run of letters, digits, '_' and '-' that starts with a
-// letter or digit: "TYPE[.VERSION]" gives "TYPE", "<src>" gives "src".
-func leadingWord(s string) string {
-	start := -1
-	for i, r := range s {
-		ok := isLetter(r) || isDigit(r) || (start >= 0 && (r == '_' || r == '-'))
-		switch {
-		case ok && start < 0:
-			start = i
-		case !ok && start >= 0:
-			return s[start:i]
-		}
-	}
-	if start < 0 {
-		return ""
-	}
-	return s[start:]
-}
-
-func isLetter(r rune) bool { return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') }
-func isDigit(r rune) bool  { return r >= '0' && r <= '9' }
-
-// argName turns a placeholder into an argument name: lower case letters, digits and '_',
-// starting with a letter.
-func argName(s string) string {
-	var b strings.Builder
-	under := false
-	for _, r := range strings.ToLower(s) {
-		if isLetter(r) || isDigit(r) {
-			if under && b.Len() > 0 {
-				b.WriteByte('_')
-			}
-			under = false
-			b.WriteRune(r)
-			continue
-		}
-		under = true
-	}
-	out := b.String()
-	if out != "" && !isLetter(rune(out[0])) {
-		out = "arg_" + out
-	}
-	return out
-}
-
-// uniqueNames gives repeated argument names a numeric suffix: name, name_2, name_3.
-func uniqueNames(args []*imp.Argument) {
-	used := map[string]bool{}
-	for _, a := range args {
-		name := a.Name
-		for n := 2; used[name]; n++ {
-			name = a.Name + "_" + strconv.Itoa(n)
-		}
-		a.Name = name
-		used[name] = true
-	}
-}
 
 // probe calls the Args validator with 0..probeLimit placeholder arguments and returns the
 // counts it accepts. A validator that checks values against ValidArgs is given ValidArgs[0].
@@ -197,7 +56,7 @@ func (im *importer) arguments(c *cobra.Command, path string) []*imp.Argument {
 	if !c.Runnable() {
 		return nil // Cobra shows help for a command it cannot run, whatever the words
 	}
-	declared := parseUse(c.Use)
+	declared := walk.ParseUse(c.Use)
 	if c.Args == nil {
 		if c.HasSubCommands() {
 			return nil
@@ -212,7 +71,7 @@ func (im *importer) arguments(c *cobra.Command, path string) []*imp.Argument {
 	invented := false
 	name := func(i int, variadic bool) string {
 		if i < len(declared) {
-			return declared[i].name
+			return declared[i].Name
 		}
 		invented = true
 		if variadic {
@@ -225,7 +84,7 @@ func (im *importer) arguments(c *cobra.Command, path string) []*imp.Argument {
 		scalars = lo
 		// Keep the required ones as named scalars only when Use names each of them and the
 		// last is not itself the variadic one.
-		if lo > 0 && (len(declared) < lo || declared[lo-1].variadic) {
+		if lo > 0 && (len(declared) < lo || declared[lo-1].Variadic) {
 			scalars = 0
 		}
 	}
@@ -248,7 +107,7 @@ func (im *importer) arguments(c *cobra.Command, path string) []*imp.Argument {
 		}
 		out = append(out, &imp.Argument{Name: name(scalars, true), Schema: s})
 	}
-	uniqueNames(out)
+	walk.UniqueNames(out)
 	if enum != nil && len(out) > 1 {
 		im.notef(path, imp.Lossy, "ValidArgs became the enum of the first argument only")
 	}
@@ -264,10 +123,10 @@ func (im *importer) counts(c *cobra.Command, path string) (lo, hi int) {
 	stock := isCobraFunc(c.Args)
 	switch {
 	case len(acc) == 0:
-		im.notef(path, imp.Lossy, "Args validator %s accepted none of the probes; imported as any number of arguments, move its checks to the handler", funcName(c.Args))
+		im.notef(path, imp.Lossy, "Args validator %s accepted none of the probes; imported as any number of arguments, move its checks to the handler", walk.FuncName(c.Args))
 		return 0, -1
 	case !contiguous(acc):
-		im.notef(path, imp.Unsupported, "Args validator %s accepts %v positionals, not a range; imported as any number, move the check to the handler", funcName(c.Args), acc)
+		im.notef(path, imp.Unsupported, "Args validator %s accepts %v positionals, not a range; imported as any number, move the check to the handler", walk.FuncName(c.Args), acc)
 		return 0, -1
 	}
 	lo, hi = acc[0], acc[len(acc)-1]
@@ -275,7 +134,7 @@ func (im *importer) counts(c *cobra.Command, path string) (lo, hi int) {
 		hi = -1
 	}
 	if !stock {
-		im.notef(path, imp.Lossy, "custom Args validator %s: the count %d..%s was found by probing; move any value checks to the handler", funcName(c.Args), lo, bound(hi))
+		im.notef(path, imp.Lossy, "custom Args validator %s: the count %d..%s was found by probing; move any value checks to the handler", walk.FuncName(c.Args), lo, bound(hi))
 	}
 	return lo, hi
 }
@@ -283,32 +142,32 @@ func (im *importer) counts(c *cobra.Command, path string) (lo, hi int) {
 // fromUse builds the arguments of a command with no Args validator from its Use line.
 // Cobra accepts any positionals then, so unless Options.Strict a trailing variadic "args"
 // keeps that behavior.
-func (im *importer) fromUse(c *cobra.Command, path string, declared []useArg) []*imp.Argument {
+func (im *importer) fromUse(c *cobra.Command, path string, declared []walk.UseArg) []*imp.Argument {
 	enum := validArgs(c)
 	var out []*imp.Argument
 	variadic := false
 	for i, d := range declared {
-		s := &imp.Schema{Type: "string", Required: !d.optional}
-		if d.variadic {
+		s := &imp.Schema{Type: "string", Required: !d.Optional}
+		if d.Variadic {
 			s.Type, variadic = "[]string", true
-			if !d.optional {
+			if !d.Optional {
 				one := 1
 				s.MinItems = &one
 			}
 		}
 		if i == 0 && enum != nil {
-			if d.variadic {
+			if d.Variadic {
 				s.Items = &imp.Schema{Type: "string", Enum: enum}
 			} else {
 				s.Enum = enum
 			}
 		}
-		out = append(out, &imp.Argument{Name: d.name, Schema: s})
+		out = append(out, &imp.Argument{Name: d.Name, Schema: s})
 		if variadic {
 			break
 		}
 	}
-	uniqueNames(out)
+	walk.UniqueNames(out)
 	optionalSeen := false
 	for _, a := range out {
 		switch {
@@ -327,7 +186,7 @@ func (im *importer) fromUse(c *cobra.Command, path string, declared []useArg) []
 		out = append(out, &imp.Argument{Name: "args", Summary: "further arguments", Schema: s})
 		im.notef(path, imp.Info, "Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras")
 	}
-	uniqueNames(out)
+	walk.UniqueNames(out)
 	return out
 }
 

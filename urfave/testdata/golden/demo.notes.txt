@@ -1,0 +1,27 @@
+[unsupported] acme: Suggest dropped: rotini makes no suggestions unless the program asks for them
+[lossy] acme: --context also reads file "/etc/acme/context": declare variable_file, or config_files and key:, by hand
+[lossy] acme: --output has the custom value type *demo.format: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[info] acme: Version "1.4.2": urfave/cli's version flag is kept as -v/--version; the version string belongs in the build (ldflags) or the root hook
+[lossy] acme deploy: --strategy checks its value with example.com/demo.Root.func4 (Validator): move the check into the handler
+[lossy] acme deploy: --token reads the environment variable "acme_token", which is not a valid rotini variable name; it was dropped
+[lossy] acme deploy: --reason is required and has the default none: the default was dropped, since rotini rejects both together
+[lossy] acme deploy: --at parses times with the layouts [2006-01-02]: declare them as layout:
+[lossy] acme deploy: --mode parses numbers in base 8: rotini parses decimal; take a string and parse it in the handler
+[lossy] acme deploy: --trace runs example.com/demo.Root.func5 when it is given (Action): move it into the handler
+[lossy] acme deploy: flag --db.host is not a valid rotini name; renamed to --db-host
+[unsupported] acme deploy: a mutually exclusive group has an option of several flags: a rotini group names single flags, so it was dropped; check it in the handler
+[info] acme cluster list: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] acme secrets: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[unsupported] acme config: DefaultCommand "get" dropped: rotini runs no command unless it is named; have this command's handler call its code
+[lossy] acme config: custom UsageText: rotini generates usage from the spec
+[info] acme config get: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] acme config set: <value> is required after an optional placeholder in "[key] <value>": arguments fill in order, so it was made optional; the handler must check which were given
+[info] acme config set: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[unsupported] acme version: PrefixMatchCommands dropped: rotini matches command names exactly
+[lossy] acme version: ShellComplete example.com/demo.Root.func6: reimplement it as a rotini completer
+[info] acme version: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] acme completion: urfave/cli's completion command is imported in the shape rotini seeds, one command with a shell argument, where urfave/cli's pwsh is powershell
+[info] acme: urfave/cli prints deprecation warnings itself; in rotini a hook reads rotini.Deprecations and prints them
+[info] acme: urfave/cli prints help for a command with no Action; rotini runs that command's handler, so make it print help
+[info] acme: rotini also accepts a command's own flags after a sub-command name (acme)
+imported 17 commands, 34 flags: 13 lossy, 4 unsupported, 9 info

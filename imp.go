@@ -59,16 +59,21 @@ type Command struct {
 
 // Argument is one positional argument.
 type Argument struct {
-	Name    string  `json:"name"`
-	Summary string  `json:"summary,omitempty"`
-	Schema  *Schema `json:"schema"`
+	Name    string `json:"name"`
+	Summary string `json:"summary,omitempty"`
+	// Passthrough makes this argument and every word after it reach the argument as typed,
+	// while the flags before it parse as usual. It is the command's last argument.
+	Passthrough bool    `json:"passthrough,omitempty"`
+	Schema      *Schema `json:"schema"`
 }
 
 // Flag is one flag.
 type Flag struct {
-	Name                  string   `json:"name"`
-	Summary               string   `json:"summary,omitempty"`
-	Identifiers           []string `json:"identifiers"`
+	Name        string   `json:"name"`
+	Summary     string   `json:"summary,omitempty"`
+	Identifiers []string `json:"identifiers"`
+	// Group is the heading the flag is listed under in help.
+	Group                 string   `json:"group,omitempty"`
 	Cascading             bool     `json:"cascading,omitempty"`
 	ShortCircuit          bool     `json:"short_circuit,omitempty"`
 	Hidden                bool     `json:"hidden,omitempty"`
@@ -93,6 +98,13 @@ type Schema struct {
 	ImplicitValue string      `json:"implicit_value,omitempty"`
 	Placeholder   string      `json:"placeholder,omitempty"`
 	Complete      *Complete   `json:"complete,omitempty"`
+	// Variable lists the environment variables the input falls back to, first preferred.
+	Variable []string `json:"variable,omitempty"`
+	// Negatable is true when a bool flag also takes a --no-<name> form, or the one negated
+	// identifier it takes instead, such as "--plain".
+	Negatable any `json:"negatable,omitempty"`
+	// Repeatable, when false, makes giving a single-value flag more than once an error.
+	Repeatable *bool `json:"repeatable,omitempty"`
 }
 
 // EnumValue is one allowed value, with an optional one-line description.
