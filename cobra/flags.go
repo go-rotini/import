@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	imp "github.com/go-rotini/import"
+	"github.com/go-rotini/import/internal/walk"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -97,7 +98,7 @@ func (im *importer) builtinFlag(f *pflag.Flag, kind string, cascading bool) *imp
 var backquoted = regexp.MustCompile("`([^`]+)`")
 
 func (im *importer) flag(c *cobra.Command, path string, f *pflag.Flag, cascading bool) *imp.Flag {
-	name := commandName(f.Name)
+	name := walk.CommandName(f.Name)
 	if name != f.Name {
 		im.notef(path, imp.Lossy, "flag --%s is not a valid rotini name; renamed to --%s", f.Name, name)
 	}
@@ -107,7 +108,7 @@ func (im *importer) flag(c *cobra.Command, path string, f *pflag.Flag, cascading
 	}
 	switch {
 	case f.Shorthand == "":
-	case isLetter(rune(f.Shorthand[0])):
+	case walk.IsLetter(rune(f.Shorthand[0])):
 		rf.Identifiers = append(rf.Identifiers, "-"+f.Shorthand)
 		if f.ShorthandDeprecated != "" {
 			rf.DeprecatedIdentifiers = []string{"-" + f.Shorthand}
@@ -377,7 +378,7 @@ func (im *importer) ownGroups(c *cobra.Command, path string, names map[string]st
 // kind none; anything else is reported, since rotini completes values from an enum or from
 // a completer written for rotini.
 func (im *importer) completion(c *cobra.Command, path, what string, fn completionFunc, s *imp.Schema) {
-	name := funcName(fn)
+	name := walk.FuncName(fn)
 	switch {
 	case name == "github.com/spf13/cobra.NoFileCompletions":
 		s.Complete = &imp.Complete{Kind: "none"}

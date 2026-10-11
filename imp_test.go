@@ -14,6 +14,7 @@ import (
 
 func sample() *imp.Result {
 	two := 2
+	once := false
 	return &imp.Result{
 		Source: imp.Source{Framework: "cobra", Version: "v1.10.2", Importer: "v0.1.0"},
 		Command: &imp.Command{
@@ -24,12 +25,18 @@ func sample() *imp.Result {
 				{Name: "ratio", Identifiers: []string{"--ratio"}, Schema: &imp.Schema{Type: "float64", Default: 0.5}},
 				{Name: "set", Identifiers: []string{"--set"}, Schema: &imp.Schema{Type: "map[string]int", Default: map[string]any{"a": int64(1)}}},
 				{Name: "big", Identifiers: []string{"--big"}, Schema: &imp.Schema{Type: "uint64", Default: uint64(18446744073709551615)}},
+				{Name: "token", Identifiers: []string{"--token"}, Group: "Auth", Schema: &imp.Schema{Type: "string", Variable: []string{"APP_TOKEN", "TOKEN"}, Repeatable: &once}},
+				{Name: "color", Identifiers: []string{"--color"}, Schema: &imp.Schema{Type: "bool", Negatable: "--plain"}},
+				{Name: "wait", Identifiers: []string{"--wait"}, Schema: &imp.Schema{Type: "bool", Negatable: true}},
 			},
 			Commands: []*imp.Command{{
 				Name:         "deploy",
 				OptionsFirst: true,
-				Arguments:    []*imp.Argument{{Name: "svc", Schema: &imp.Schema{Type: "[]string", Required: true, MinItems: &two, Items: &imp.Schema{Type: "string", Enum: []imp.EnumValue{{Value: "api", Summary: "the <api>"}}}}}},
-				FlagGroups:   []*imp.FlagGroup{{Kind: "one_of", Flags: []string{"a", "b"}}},
+				Arguments: []*imp.Argument{
+					{Name: "svc", Schema: &imp.Schema{Type: "[]string", Required: true, MinItems: &two, Items: &imp.Schema{Type: "string", Enum: []imp.EnumValue{{Value: "api", Summary: "the <api>"}}}}},
+					{Name: "rest", Passthrough: true, Schema: &imp.Schema{Type: "[]string"}},
+				},
+				FlagGroups: []*imp.FlagGroup{{Kind: "one_of", Flags: []string{"a", "b"}}},
 			}},
 		},
 		Notes: []imp.Note{
@@ -146,11 +153,11 @@ func TestReadAccepts(t *testing.T) {
 
 func TestStats(t *testing.T) {
 	s := sample().Stats()
-	want := imp.Stats{Commands: 2, Flags: 5, Lossy: 1, Unsupported: 1, Info: 1}
+	want := imp.Stats{Commands: 2, Flags: 8, Lossy: 1, Unsupported: 1, Info: 1}
 	if s != want {
 		t.Fatalf("stats %+v", s)
 	}
-	if got := s.String(); got != "imported 2 commands, 5 flags: 1 lossy, 1 unsupported, 1 info" {
+	if got := s.String(); got != "imported 2 commands, 8 flags: 1 lossy, 1 unsupported, 1 info" {
 		t.Fatalf("summary %q", got)
 	}
 	if (&imp.Result{}).Stats() != (imp.Stats{}) {

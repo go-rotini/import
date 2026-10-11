@@ -1,0 +1,789 @@
+{
+  "format": "rotini-import/1",
+  "source": {
+    "framework": "kong",
+    "version": "v1.16.1"
+  },
+  "command": {
+    "name": "acme",
+    "flags": [
+      {
+        "name": "help",
+        "summary": "Show context-sensitive help.",
+        "identifiers": [
+          "-h",
+          "--help"
+        ],
+        "cascading": true,
+        "short_circuit": true,
+        "schema": {
+          "type": "bool"
+        },
+        "builtin": "help"
+      },
+      {
+        "name": "verbose",
+        "summary": "Increase verbosity (repeatable).",
+        "identifiers": [
+          "-v",
+          "--verbose"
+        ],
+        "cascading": true,
+        "schema": {
+          "type": "count"
+        }
+      },
+      {
+        "name": "config",
+        "summary": "Path to a config file.",
+        "identifiers": [
+          "--config"
+        ],
+        "cascading": true,
+        "schema": {
+          "type": "string",
+          "placeholder": "FILE",
+          "complete": {
+            "kind": "file"
+          }
+        }
+      },
+      {
+        "name": "context",
+        "summary": "Kube context.",
+        "identifiers": [
+          "--context"
+        ],
+        "cascading": true,
+        "schema": {
+          "type": "string",
+          "default": "default",
+          "variable": [
+            "ACME_CONTEXT"
+          ]
+        }
+      },
+      {
+        "name": "output",
+        "summary": "Output format.",
+        "identifiers": [
+          "-o",
+          "--output"
+        ],
+        "cascading": true,
+        "schema": {
+          "type": "string",
+          "default": "table",
+          "enum": [
+            {
+              "value": "json"
+            },
+            {
+              "value": "yaml"
+            },
+            {
+              "value": "table"
+            }
+          ]
+        }
+      },
+      {
+        "name": "version",
+        "summary": "Print the version.",
+        "identifiers": [
+          "--version"
+        ],
+        "cascading": true,
+        "short_circuit": true,
+        "schema": {
+          "type": "bool"
+        },
+        "builtin": "version"
+      }
+    ],
+    "commands": [
+      {
+        "name": "deploy",
+        "aliases": [
+          "d",
+          "ship"
+        ],
+        "summary": "Deploy a service.",
+        "description": "Deploy rolls out a service to the current context.",
+        "group": "Core",
+        "arguments": [
+          {
+            "name": "service",
+            "summary": "Service to deploy.",
+            "schema": {
+              "type": "string",
+              "required": true,
+              "enum": [
+                {
+                  "value": "api"
+                },
+                {
+                  "value": "web"
+                },
+                {
+                  "value": "worker"
+                }
+              ]
+            }
+          }
+        ],
+        "flags": [
+          {
+            "name": "replicas",
+            "summary": "Replica count.",
+            "identifiers": [
+              "-r",
+              "--replicas"
+            ],
+            "schema": {
+              "type": "int",
+              "default": 1,
+              "variable": [
+                "ACME_REPLICAS",
+                "REPLICAS"
+              ]
+            }
+          },
+          {
+            "name": "timeout",
+            "summary": "Rollout timeout.",
+            "identifiers": [
+              "--timeout"
+            ],
+            "schema": {
+              "type": "duration",
+              "default": "5m"
+            }
+          },
+          {
+            "name": "tags",
+            "summary": "Tags to attach.",
+            "identifiers": [
+              "--tags"
+            ],
+            "schema": {
+              "type": "[]string",
+              "default": [
+                "a",
+                "b"
+              ],
+              "separator": ","
+            }
+          },
+          {
+            "name": "ports",
+            "summary": "Ports.",
+            "identifiers": [
+              "--ports"
+            ],
+            "schema": {
+              "type": "[]int",
+              "default": [
+                80,
+                443
+              ],
+              "separator": ";"
+            }
+          },
+          {
+            "name": "set",
+            "summary": "Helm-style overrides.",
+            "identifiers": [
+              "--set"
+            ],
+            "schema": {
+              "type": "map[string]string",
+              "separator": ";"
+            }
+          },
+          {
+            "name": "limits",
+            "summary": "Per-zone limits.",
+            "identifiers": [
+              "--limits"
+            ],
+            "schema": {
+              "type": "map[string]int",
+              "separator": ","
+            }
+          },
+          {
+            "name": "dry-run",
+            "summary": "Print the plan only.",
+            "identifiers": [
+              "--dry-run"
+            ],
+            "schema": {
+              "type": "bool",
+              "negatable": true
+            }
+          },
+          {
+            "name": "color",
+            "summary": "Colorize output.",
+            "identifiers": [
+              "--color"
+            ],
+            "schema": {
+              "type": "bool",
+              "default": true,
+              "negatable": "--plain"
+            }
+          },
+          {
+            "name": "strategy",
+            "summary": "Rollout strategy.",
+            "identifiers": [
+              "--strategy"
+            ],
+            "group": "Rollout",
+            "schema": {
+              "type": "string",
+              "default": "rolling",
+              "enum": [
+                {
+                  "value": "rolling"
+                },
+                {
+                  "value": "bluegreen"
+                }
+              ]
+            }
+          },
+          {
+            "name": "canary",
+            "summary": "Canary weight.",
+            "identifiers": [
+              "--canary"
+            ],
+            "group": "Rollout",
+            "schema": {
+              "type": "float64",
+              "default": 0.1
+            }
+          },
+          {
+            "name": "token",
+            "summary": "API token.",
+            "identifiers": [
+              "--token"
+            ],
+            "hidden": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cert",
+            "summary": "TLS cert.",
+            "identifiers": [
+              "--cert"
+            ],
+            "schema": {
+              "type": "existingfile"
+            }
+          },
+          {
+            "name": "key",
+            "summary": "TLS key.",
+            "identifiers": [
+              "--key"
+            ],
+            "schema": {
+              "type": "existingfile"
+            }
+          },
+          {
+            "name": "json",
+            "summary": "JSON output.",
+            "identifiers": [
+              "--json"
+            ],
+            "schema": {
+              "type": "bool"
+            }
+          },
+          {
+            "name": "yaml",
+            "summary": "YAML output.",
+            "identifiers": [
+              "--yaml"
+            ],
+            "schema": {
+              "type": "bool"
+            }
+          },
+          {
+            "name": "chart-dir",
+            "summary": "Chart directory.",
+            "identifiers": [
+              "--chart-dir"
+            ],
+            "schema": {
+              "type": "existingdir"
+            }
+          },
+          {
+            "name": "out",
+            "summary": "Where to write the plan.",
+            "identifiers": [
+              "--out"
+            ],
+            "schema": {
+              "type": "string",
+              "complete": {
+                "kind": "file"
+              }
+            }
+          },
+          {
+            "name": "at",
+            "summary": "Schedule the rollout.",
+            "identifiers": [
+              "--at"
+            ],
+            "schema": {
+              "type": "time"
+            }
+          },
+          {
+            "name": "level",
+            "summary": "Alert level.",
+            "identifiers": [
+              "--level"
+            ],
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "trace",
+            "summary": "Print a trace.",
+            "identifiers": [
+              "--trace"
+            ],
+            "schema": {
+              "type": "bool"
+            }
+          },
+          {
+            "name": "region",
+            "summary": "Cloud region (${default_region}).",
+            "identifiers": [
+              "--region"
+            ],
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "zone",
+            "summary": "Zone in staging.",
+            "identifiers": [
+              "--zone"
+            ],
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "db-host",
+            "summary": "Database host.",
+            "identifiers": [
+              "--db-host"
+            ],
+            "schema": {
+              "type": "string",
+              "default": "localhost"
+            }
+          },
+          {
+            "name": "db-port",
+            "summary": "Database port.",
+            "identifiers": [
+              "--db-port"
+            ],
+            "schema": {
+              "type": "int",
+              "default": 5432
+            }
+          }
+        ],
+        "flag_groups": [
+          {
+            "kind": "required_together",
+            "flags": [
+              "cert",
+              "key"
+            ]
+          },
+          {
+            "kind": "mutually_exclusive",
+            "flags": [
+              "json",
+              "yaml"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "rollback",
+        "summary": "Roll back a service.",
+        "description": "Roll back a service.\nRolls back to the previous or a given revision.",
+        "group": "Core",
+        "arguments": [
+          {
+            "name": "service",
+            "summary": "Service to roll back.",
+            "schema": {
+              "type": "string",
+              "required": true
+            }
+          },
+          {
+            "name": "revision",
+            "summary": "Revision to roll back to.",
+            "schema": {
+              "type": "int"
+            }
+          }
+        ],
+        "flags": [
+          {
+            "name": "reason",
+            "summary": "Audit reason.",
+            "identifiers": [
+              "--reason"
+            ],
+            "schema": {
+              "type": "string",
+              "required": true
+            }
+          },
+          {
+            "name": "last",
+            "summary": "Previous revision.",
+            "identifiers": [
+              "--last"
+            ],
+            "schema": {
+              "type": "bool"
+            }
+          },
+          {
+            "name": "to",
+            "summary": "Specific revision.",
+            "identifiers": [
+              "--to"
+            ],
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "flag_groups": [
+          {
+            "kind": "one_of",
+            "flags": [
+              "last",
+              "to"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "cluster",
+        "summary": "Manage clusters.",
+        "group": "Admin",
+        "flags": [
+          {
+            "name": "region",
+            "summary": "Cloud region.",
+            "identifiers": [
+              "--region"
+            ],
+            "cascading": true,
+            "schema": {
+              "type": "string",
+              "default": "us-east-1"
+            }
+          }
+        ],
+        "commands": [
+          {
+            "name": "list",
+            "aliases": [
+              "ls"
+            ],
+            "summary": "List clusters."
+          },
+          {
+            "name": "create",
+            "summary": "Create a cluster.",
+            "arguments": [
+              {
+                "name": "name",
+                "summary": "Cluster name.",
+                "schema": {
+                  "type": "string",
+                  "required": true
+                }
+              }
+            ],
+            "flags": [
+              {
+                "name": "nodes",
+                "summary": "Node count.",
+                "identifiers": [
+                  "--nodes"
+                ],
+                "schema": {
+                  "type": "uint8",
+                  "default": 3
+                }
+              }
+            ]
+          },
+          {
+            "name": "delete",
+            "summary": "Delete clusters.",
+            "arguments": [
+              {
+                "name": "names",
+                "summary": "Clusters to delete.",
+                "schema": {
+                  "type": "[]string",
+                  "required": true,
+                  "minItems": 1
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "secrets",
+        "summary": "Show secrets.",
+        "group": "Admin",
+        "hidden": true,
+        "arguments": [
+          {
+            "name": "name",
+            "summary": "Secret to show.",
+            "schema": {
+              "type": "string",
+              "default": "all"
+            }
+          }
+        ]
+      },
+      {
+        "name": "exec",
+        "summary": "Run a command in a pod.",
+        "passthrough": true,
+        "arguments": [
+          {
+            "name": "args",
+            "summary": "Command to run.",
+            "schema": {
+              "type": "[]string",
+              "required": true,
+              "minItems": 1
+            }
+          }
+        ]
+      },
+      {
+        "name": "ssh",
+        "summary": "Run a command on a node.",
+        "arguments": [
+          {
+            "name": "node",
+            "summary": "Node to connect to.",
+            "schema": {
+              "type": "string",
+              "required": true
+            }
+          },
+          {
+            "name": "command",
+            "summary": "Command to run.",
+            "passthrough": true,
+            "schema": {
+              "type": "[]string"
+            }
+          }
+        ],
+        "flags": [
+          {
+            "name": "tty",
+            "summary": "Allocate a terminal.",
+            "identifiers": [
+              "-t",
+              "--tty"
+            ],
+            "schema": {
+              "type": "bool"
+            }
+          }
+        ]
+      },
+      {
+        "name": "status",
+        "summary": "Show status."
+      },
+      {
+        "name": "user",
+        "summary": "Manage a user.",
+        "commands": [
+          {
+            "name": "delete",
+            "summary": "Delete the user."
+          }
+        ]
+      }
+    ]
+  },
+  "notes": [
+    {
+      "path": "acme",
+      "level": "lossy",
+      "msg": "--config is a kong.ConfigFlag, which loads a configuration file: declare config_files with config_source: naming this flag"
+    },
+    {
+      "path": "acme",
+      "level": "info",
+      "msg": "--version prints the Kong variable ${version}; the version string belongs in the build (ldflags) or the root hook"
+    },
+    {
+      "path": "acme",
+      "level": "unsupported",
+      "msg": "default command \"status\" dropped: rotini runs no command unless it is named; have this command's handler call its code"
+    },
+    {
+      "path": "acme deploy",
+      "level": "lossy",
+      "msg": "--token reads the environment variable \"acme-token\", which is not a valid rotini variable name; it was dropped"
+    },
+    {
+      "path": "acme deploy",
+      "level": "lossy",
+      "msg": "--out is a Kong path: Kong expands ~ and makes it absolute; declare expand: [home] and resolve it in the handler"
+    },
+    {
+      "path": "acme deploy",
+      "level": "lossy",
+      "msg": "--at parses times with the layout \"2006-01-02\": declare it as layout:"
+    },
+    {
+      "path": "acme deploy",
+      "level": "lossy",
+      "msg": "--level has the custom type demo.Level: imported as string; use a type with import: and a TextUnmarshaler, or an enum"
+    },
+    {
+      "path": "acme deploy",
+      "level": "lossy",
+      "msg": "--trace runs example.com/demo.Trace.BeforeApply when it is given: port it to the PreRun hook, checking the flag"
+    },
+    {
+      "path": "acme deploy",
+      "level": "lossy",
+      "msg": "--region: its default comes from a Kong variable that was not supplied, so it was dropped"
+    },
+    {
+      "path": "acme deploy",
+      "level": "lossy",
+      "msg": "-1 dropped from --zone: a short flag must be a letter"
+    },
+    {
+      "path": "acme deploy",
+      "level": "lossy",
+      "msg": "flag --db.host is not a valid rotini name; renamed to --db-host"
+    },
+    {
+      "path": "acme deploy",
+      "level": "lossy",
+      "msg": "flag --db.port is not a valid rotini name; renamed to --db-port"
+    },
+    {
+      "path": "acme rollback",
+      "level": "lossy",
+      "msg": "--reason is required and has the default none: the default was dropped, since rotini rejects both together"
+    },
+    {
+      "path": "acme user",
+      "level": "unsupported",
+      "msg": "the branching argument <user> was imported as a command named user: rotini takes sub-command names as words, not values; read the value with an argument of this command's sub-commands"
+    },
+    {
+      "path": "acme",
+      "level": "lossy",
+      "msg": "Kong variables ${default_region} were not supplied: help keeps them as written, and the defaults, enums and environment variables built from them were dropped; supply each one and import again"
+    },
+    {
+      "path": "acme",
+      "level": "info",
+      "msg": "Kong rejects a command that has sub-commands when none is named; rotini runs that command's handler, so make it print help or fail"
+    },
+    {
+      "path": "acme",
+      "level": "info",
+      "msg": "options the program passes to kong.Parse or kong.New (kong.Description, kong.Configuration, resolvers, groups, mappers, bindings) were not seen unless given to the import"
+    }
+  ],
+  "hooks": [
+    {
+      "path": "acme deploy",
+      "framework": "BeforeApply",
+      "rotini": "PreRun",
+      "func": "example.com/demo.(*DeployCmd).BeforeApply",
+      "file": "$FIXTURE/demo.go",
+      "line": 78
+    },
+    {
+      "path": "acme deploy",
+      "framework": "Run",
+      "rotini": "Run",
+      "func": "example.com/demo.(*DeployCmd).Run",
+      "file": "$FIXTURE/demo.go",
+      "line": 80
+    },
+    {
+      "path": "acme deploy",
+      "framework": "AfterRun",
+      "rotini": "PostRun",
+      "func": "example.com/demo.(*DeployCmd).AfterRun",
+      "file": "$FIXTURE/demo.go",
+      "line": 82
+    },
+    {
+      "path": "acme deploy",
+      "framework": "--trace BeforeApply",
+      "rotini": "PreRun",
+      "func": "example.com/demo.Trace.BeforeApply",
+      "file": "$FIXTURE/demo.go",
+      "line": 34
+    },
+    {
+      "path": "acme rollback",
+      "framework": "Run",
+      "rotini": "Run",
+      "func": "example.com/demo.(*RollbackCmd).Run",
+      "file": "$FIXTURE/demo.go",
+      "line": 92
+    },
+    {
+      "path": "acme cluster",
+      "framework": "AfterApply",
+      "rotini": "CascadingPreRun",
+      "func": "example.com/demo.(*ClusterCmd).AfterApply",
+      "file": "$FIXTURE/demo.go",
+      "line": 107
+    }
+  ]
+}

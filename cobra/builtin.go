@@ -1,18 +1,15 @@
 package cobra
 
 import (
-	"reflect"
-	"runtime"
-	"runtime/debug"
 	"strings"
 
 	imp "github.com/go-rotini/import"
+	"github.com/go-rotini/import/internal/walk"
 	"github.com/spf13/cobra"
 )
 
 const (
 	cobraModule    = "github.com/spf13/cobra"
-	importerModule = "github.com/go-rotini/import"
 	cobraPkgPrefix = cobraModule + "."
 )
 
@@ -52,7 +49,7 @@ func (im *importer) helpCommand(sub *cobra.Command) *imp.Command {
 // completionCommand merges Cobra's completion command and its per-shell sub-commands into
 // one command that takes the shell as an argument.
 func (im *importer) completionCommand(parent, sub *cobra.Command, parentPath string) *imp.Command {
-	path := joinPath(parentPath, "completion")
+	path := walk.JoinPath(parentPath, "completion")
 	var shells []imp.EnumValue
 	noDesc := false
 	for _, sh := range sub.Commands() {
@@ -108,7 +105,7 @@ func (im *importer) commandHooks(c *cobra.Command, path string) {
 		{"PersistentPostRunE", "CascadingPostRun", c.PersistentPostRunE},
 	}
 	for _, h := range hooks {
-		name, file, line := funcPos(h.fn)
+		name, file, line := walk.FuncPos(h.fn)
 		if name == "" {
 			continue
 		}
@@ -131,121 +128,7 @@ func hasPersistentHook(c *cobra.Command) bool {
 		c.PersistentPostRun != nil || c.PersistentPostRunE != nil
 }
 
-// funcValue returns f's code pointer, or 0 for a nil or non-function value.
-func funcValue(f any) uintptr {
-	v := reflect.ValueOf(f)
-	if !v.IsValid() || v.Kind() != reflect.Func || v.IsNil() {
-		return 0
-	}
-	return v.Pointer()
-}
-
-func funcName(f any) string {
-	pc := funcValue(f)
-	if pc == 0 {
-		return ""
-	}
-	if fn := runtime.FuncForPC(pc); fn != nil {
-		return fn.Name()
-	}
-	return "?"
-}
-
-// funcPos returns a function's name, file and line. A file in the module cache is given
-// relative to it ("example.com/x@v1.2.3/cmd.go").
-func funcPos(f any) (name, file string, line int) {
-	pc := funcValue(f)
-	if pc == 0 {
-		return "", "", 0
-	}
-	fn := runtime.FuncForPC(pc)
-	if fn == nil {
-		return "?", "", 0
-	}
-	file, line = fn.FileLine(pc)
-	if _, rest, ok := strings.Cut(file, "/pkg/mod/"); ok {
-		file = rest
-	}
-	return fn.Name(), file, line
-}
-
 // isCobraFunc reports whether f is Cobra's own code: a stock validator or a default.
 func isCobraFunc(f any) bool {
-	return strings.HasPrefix(funcName(f), cobraPkgPrefix)
-}
-
-func sameFunc(a, b any) bool { return funcValue(a) == funcValue(b) }
-
-func splitExamples(ex string) []string {
-	var out []string
-	for _, l := range strings.Split(ex, "\n") {
-		if l = strings.TrimSpace(l); l != "" {
-			out = append(out, l)
-		}
-	}
-	return out
-}
-
-// commandName makes s a valid rotini command or flag name: a letter, then letters, digits,
-// '_' and '-'. Other characters become '-'.
-func commandName(s string) string {
-	var b strings.Builder
-	for _, r := range s {
-		switch {
-		case isLetter(r):
-			b.WriteRune(r)
-		case b.Len() == 0:
-		case isDigit(r) || r == '_' || r == '-':
-			b.WriteRune(r)
-		default:
-			b.WriteByte('-')
-		}
-	}
-	if b.Len() == 0 {
-		return "cmd"
-	}
-	return b.String()
-}
-
-func validName(s string) bool { return s != "" && commandName(s) == s }
-
-func source() imp.Source {
-	s := imp.Source{Framework: "cobra"}
-	bi, ok := debug.ReadBuildInfo()
-	if !ok {
-		return s
-	}
-	if bi.Main.Path == importerModule {
-		s.Importer = bi.Main.Version
-	}
-	for _, d := range bi.Deps {
-		switch d.Path {
-		case cobraModule:
-			s.Version = moduleVersion(d)
-		case importerModule:
-			s.Importer = moduleVersion(d)
-		}
-	}
-	return s
-}
-
-func moduleVersion(m *debug.Module) string {
-	if m.Replace != nil && m.Replace.Version != "" {
-		return m.Replace.Version
-	}
-	return m.Version
-}
-
-// dependsOn reports whether the running program links the module at path.
-func dependsOn(path string) bool {
-	bi, ok := debug.ReadBuildInfo()
-	if !ok {
-		return false
-	}
-	for _, d := range bi.Deps {
-		if d.Path == path {
-			return true
-		}
-	}
-	return false
+	return strings.HasPrefix(walk.FuncName(f), cobraPkgPrefix)
 }

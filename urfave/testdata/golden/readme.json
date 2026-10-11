@@ -1,0 +1,184 @@
+{
+  "format": "rotini-import/1",
+  "source": {
+    "framework": "urfave",
+    "version": "v3.14.0"
+  },
+  "command": {
+    "name": "tasks",
+    "flags": [
+      {
+        "name": "help",
+        "summary": "show help",
+        "identifiers": [
+          "-h",
+          "--help"
+        ],
+        "cascading": true,
+        "short_circuit": true,
+        "schema": {
+          "type": "bool"
+        },
+        "builtin": "help"
+      },
+      {
+        "name": "lang",
+        "summary": "language for the greeting",
+        "identifiers": [
+          "--lang"
+        ],
+        "cascading": true,
+        "schema": {
+          "type": "string",
+          "default": "english"
+        }
+      }
+    ],
+    "commands": [
+      {
+        "name": "add",
+        "aliases": [
+          "a"
+        ],
+        "summary": "add a task to the list",
+        "arguments": [
+          {
+            "name": "args",
+            "summary": "further arguments",
+            "schema": {
+              "type": "[]string"
+            }
+          }
+        ]
+      },
+      {
+        "name": "complete",
+        "aliases": [
+          "c"
+        ],
+        "summary": "complete a task on the list",
+        "arguments": [
+          {
+            "name": "args",
+            "summary": "further arguments",
+            "schema": {
+              "type": "[]string"
+            }
+          }
+        ]
+      },
+      {
+        "name": "template",
+        "aliases": [
+          "t"
+        ],
+        "summary": "options for task templates",
+        "commands": [
+          {
+            "name": "add",
+            "summary": "add a new template",
+            "arguments": [
+              {
+                "name": "args",
+                "summary": "further arguments",
+                "schema": {
+                  "type": "[]string"
+                }
+              }
+            ]
+          },
+          {
+            "name": "remove",
+            "summary": "remove an existing template",
+            "arguments": [
+              {
+                "name": "args",
+                "summary": "further arguments",
+                "schema": {
+                  "type": "[]string"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "help",
+        "aliases": [
+          "h"
+        ],
+        "summary": "Shows a list of commands or help for one command",
+        "arguments": [
+          {
+            "name": "command",
+            "schema": {
+              "type": "[]string"
+            }
+          }
+        ],
+        "builtin": "help"
+      }
+    ]
+  },
+  "notes": [
+    {
+      "path": "tasks add",
+      "level": "info",
+      "msg": "no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras"
+    },
+    {
+      "path": "tasks complete",
+      "level": "info",
+      "msg": "no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras"
+    },
+    {
+      "path": "tasks template add",
+      "level": "info",
+      "msg": "no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras"
+    },
+    {
+      "path": "tasks template remove",
+      "level": "info",
+      "msg": "no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras"
+    },
+    {
+      "path": "tasks",
+      "level": "info",
+      "msg": "urfave/cli prints help for a command with no Action; rotini runs that command's handler, so make it print help"
+    }
+  ],
+  "hooks": [
+    {
+      "path": "tasks add",
+      "framework": "Action",
+      "rotini": "Run",
+      "func": "example.com/tasks.newApp.func1",
+      "file": "$FIXTURE/main.go",
+      "line": 24
+    },
+    {
+      "path": "tasks complete",
+      "framework": "Action",
+      "rotini": "Run",
+      "func": "example.com/tasks.newApp.func2",
+      "file": "$FIXTURE/main.go",
+      "line": 33
+    },
+    {
+      "path": "tasks template add",
+      "framework": "Action",
+      "rotini": "Run",
+      "func": "example.com/tasks.newApp.func3",
+      "file": "$FIXTURE/main.go",
+      "line": 46
+    },
+    {
+      "path": "tasks template remove",
+      "framework": "Action",
+      "rotini": "Run",
+      "func": "example.com/tasks.newApp.func4",
+      "file": "$FIXTURE/main.go",
+      "line": 54
+    }
+  ]
+}

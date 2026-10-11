@@ -146,7 +146,7 @@ linters:
       - common-false-positives
       - std-error-handling
     rules:
-      - path: _test\.go
+      - path: (_test\.go|internal/corpustest/)
         linters:
           - errcheck
           - gosec

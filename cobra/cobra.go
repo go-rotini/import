@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	imp "github.com/go-rotini/import"
+	"github.com/go-rotini/import/internal/walk"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -52,7 +53,7 @@ func FromCobra(cmd *cobra.Command, opts Options) (res *imp.Result, err error) {
 	rc := im.command(root, "")
 	im.programNotes(root)
 	return &imp.Result{
-		Source:  source(),
+		Source:  walk.Source("cobra", cobraModule),
 		Command: rc,
 		Notes:   im.notes,
 		Hooks:   im.hooks,
@@ -88,26 +89,19 @@ func (im *importer) safely(c *cobra.Command, what string, fn func()) {
 // commandPath is c's path as the import names it.
 func commandPath(c *cobra.Command) string {
 	if !c.HasParent() {
-		return commandName(c.Name())
+		return walk.CommandName(c.Name())
 	}
-	return joinPath(commandPath(c.Parent()), commandName(c.Name()))
+	return walk.JoinPath(commandPath(c.Parent()), walk.CommandName(c.Name()))
 }
 
 func (im *importer) notef(path string, level imp.Level, format string, a ...any) {
 	im.notes = append(im.notes, imp.Note{Path: path, Level: level, Msg: fmt.Sprintf(format, a...)})
 }
 
-func joinPath(parent, name string) string {
-	if parent == "" {
-		return name
-	}
-	return parent + " " + name
-}
-
 func (im *importer) command(c *cobra.Command, parent string) *imp.Command {
 	isRoot := !c.HasParent()
-	name := commandName(c.Name())
-	path := joinPath(parent, name)
+	name := walk.CommandName(c.Name())
+	path := walk.JoinPath(parent, name)
 	if name != c.Name() {
 		im.notef(path, imp.Lossy, "command name %q is not a valid rotini name; renamed to %q", c.Name(), name)
 	}
@@ -115,7 +109,7 @@ func (im *importer) command(c *cobra.Command, parent string) *imp.Command {
 		Name:        name,
 		Summary:     strings.TrimSpace(c.Short),
 		Description: strings.TrimSpace(c.Long),
-		Examples:    splitExamples(c.Example),
+		Examples:    walk.SplitExamples(c.Example),
 		Hidden:      c.Hidden,
 		Deprecated:  c.Deprecated,
 	}
@@ -170,7 +164,7 @@ func (im *importer) command(c *cobra.Command, parent string) *imp.Command {
 func (im *importer) aliases(c *cobra.Command, path string) []string {
 	var out []string
 	for _, a := range c.Aliases {
-		if !validName(a) {
+		if !walk.ValidName(a) {
 			im.notef(path, imp.Lossy, "alias %q dropped: not a valid rotini name", a)
 			continue
 		}
@@ -214,11 +208,11 @@ func (im *importer) templateNotes(c *cobra.Command, path string) {
 	if c.HasParent() {
 		parent = c.Parent()
 	}
-	if f := c.HelpFunc(); !isCobraFunc(f) && (parent == nil || !sameFunc(f, parent.HelpFunc())) {
-		im.notef(path, imp.Lossy, "custom help function %s: rotini generates help from the spec; port it as a verbatim help page or a help handler", funcName(f))
+	if f := c.HelpFunc(); !isCobraFunc(f) && (parent == nil || !walk.SameFunc(f, parent.HelpFunc())) {
+		im.notef(path, imp.Lossy, "custom help function %s: rotini generates help from the spec; port it as a verbatim help page or a help handler", walk.FuncName(f))
 	}
-	if f := c.UsageFunc(); !isCobraFunc(f) && (parent == nil || !sameFunc(f, parent.UsageFunc())) {
-		im.notef(path, imp.Lossy, "custom usage function %s: rotini generates usage from the spec", funcName(f))
+	if f := c.UsageFunc(); !isCobraFunc(f) && (parent == nil || !walk.SameFunc(f, parent.UsageFunc())) {
+		im.notef(path, imp.Lossy, "custom usage function %s: rotini generates usage from the spec", walk.FuncName(f))
 	}
 	def := &cobra.Command{}
 	for _, t := range []struct{ name, got, def, inherited string }{
@@ -280,7 +274,7 @@ func (im *importer) optionsFirst(path string, rc *imp.Command) {
 
 // programNotes adds the notes that concern the whole import, once each.
 func (im *importer) programNotes(root *cobra.Command) {
-	path := commandName(root.Name())
+	path := walk.CommandName(root.Name())
 	if im.deprecations {
 		im.notef(path, imp.Info, "Cobra prints deprecation warnings itself; in rotini a hook reads rotini.Deprecations and prints them")
 	}
@@ -302,7 +296,7 @@ func (im *importer) programNotes(root *cobra.Command) {
 	if !hasFlagCompletionLookup(root) {
 		im.notef(path, imp.Info, "this Cobra version does not expose flag completion functions; any registered ones were not detected")
 	}
-	if dependsOn("github.com/spf13/viper") {
+	if walk.DependsOn("github.com/spf13/viper") {
 		im.notef(path, imp.Lossy, "viper is linked in: its bindings (BindPFlag, AutomaticEnv, SetEnvPrefix, config paths) were not imported; declare variable: and key: on inputs, env_prefix and config_files by hand")
 	}
 }

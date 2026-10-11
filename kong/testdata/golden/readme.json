@@ -1,0 +1,106 @@
+{
+  "format": "rotini-import/1",
+  "source": {
+    "framework": "kong",
+    "version": "v1.16.1"
+  },
+  "command": {
+    "name": "shell",
+    "flags": [
+      {
+        "name": "help",
+        "summary": "Show context-sensitive help.",
+        "identifiers": [
+          "-h",
+          "--help"
+        ],
+        "cascading": true,
+        "short_circuit": true,
+        "schema": {
+          "type": "bool"
+        },
+        "builtin": "help"
+      }
+    ],
+    "commands": [
+      {
+        "name": "rm",
+        "summary": "Remove files.",
+        "arguments": [
+          {
+            "name": "path",
+            "summary": "Paths to remove.",
+            "schema": {
+              "type": "[]string",
+              "required": true,
+              "minItems": 1,
+              "complete": {
+                "kind": "file"
+              }
+            }
+          }
+        ],
+        "flags": [
+          {
+            "name": "force",
+            "summary": "Force removal.",
+            "identifiers": [
+              "--force"
+            ],
+            "schema": {
+              "type": "bool"
+            }
+          },
+          {
+            "name": "recursive",
+            "summary": "Recursively remove files.",
+            "identifiers": [
+              "--recursive"
+            ],
+            "schema": {
+              "type": "bool"
+            }
+          }
+        ]
+      },
+      {
+        "name": "ls",
+        "summary": "List paths.",
+        "arguments": [
+          {
+            "name": "path",
+            "summary": "Paths to list.",
+            "schema": {
+              "type": "[]string",
+              "complete": {
+                "kind": "file"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "notes": [
+    {
+      "path": "shell rm",
+      "level": "lossy",
+      "msg": "<path> is a Kong path: Kong expands ~ and makes it absolute; declare expand: [home] and resolve it in the handler"
+    },
+    {
+      "path": "shell ls",
+      "level": "lossy",
+      "msg": "<path> is a Kong path: Kong expands ~ and makes it absolute; declare expand: [home] and resolve it in the handler"
+    },
+    {
+      "path": "shell",
+      "level": "info",
+      "msg": "Kong rejects a command that has sub-commands when none is named; rotini runs that command's handler, so make it print help or fail"
+    },
+    {
+      "path": "shell",
+      "level": "info",
+      "msg": "options the program passes to kong.Parse or kong.New (kong.Description, kong.Configuration, resolvers, groups, mappers, bindings) were not seen unless given to the import"
+    }
+  ]
+}

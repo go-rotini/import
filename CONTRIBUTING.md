@@ -26,14 +26,16 @@ make lint
 ## Testing
 
 ```bash
-make test                   # all tests, including the Cobra importer's offline corpus
+make test                   # all tests, including each importer's offline corpus
 make test-cobra-versions    # the Cobra importer against every supported Cobra release
+make test-kong-versions     # the Kong importer against every supported Kong release
+make test-urfave-versions   # the urfave/cli importer against every supported urfave/cli release
 make test-fuzz              # fuzz tests (60s per fuzzer)
 make test-race              # tests with the race detector
 ROTINI_IMPORT_NETWORK=1 go test -run TestNetworkCorpus ./cobra  # import Delve and kubectl
 ```
 
-The corpus under `cobra/testdata/corpus` holds small Cobra programs, each a module of its own, imported the way the rotini companion CLI imports them. After an intended change to the output, rewrite the golden files with `go test -run TestCorpus ./cobra -update` and review the diff.
+The corpus under each importer's `testdata/corpus` holds small programs, each a module of its own, imported the way the rotini companion CLI imports them. After an intended change to the output, rewrite the golden files with `go test -run TestCorpus ./cobra ./kong ./urfave -update` and review the diff.
 
 ## Pull Requests
 
@@ -43,7 +45,7 @@ The corpus under `cobra/testdata/corpus` holds small Cobra programs, each a modu
 
 ## Reporting Bugs
 
-Open an issue with the smallest command tree that shows the problem (the `cobra.Command` declarations, flags and annotations), the note or description you got and the one you expected, and the framework's version.
+Open an issue with the smallest command tree that shows the problem (the `cobra.Command` declarations, the Kong grammar or the `cli.Command` tree), the note or description you got and the one you expected, and the framework's version.
 
 ## Security
 
