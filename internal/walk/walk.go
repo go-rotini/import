@@ -22,7 +22,8 @@ func IsLetter(r rune) bool { return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 
 func IsDigit(r rune) bool { return r >= '0' && r <= '9' }
 
 // CommandName makes s a valid rotini command or flag name: a letter, then letters, digits,
-// '_' and '-'. Other characters become '-'.
+// '_' and '-'. Characters before the first letter are dropped, other characters become
+// '-', and a name with no letter becomes "cmd".
 func CommandName(s string) string {
 	var b strings.Builder
 	for _, r := range s {

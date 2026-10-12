@@ -5,7 +5,7 @@
 // [FromKong] builds the Kong model from a grammar struct, as the program's own kong.Parse
 // does, and walks it: commands, flags, positional arguments, environment variables,
 // defaults, enums, and the xor groups and "and" groups. It parses no command line and runs nothing.
-// Kong's help flag is imported too and marked as builtin.
+// Kong's help flag and any kong.VersionFlag are imported too and marked as builtin.
 //
 // What cannot be carried across exactly is reported as notes, and the methods Kong calls at
 // each lifecycle step (Run, the Before and After hooks) are reported as hooks with their

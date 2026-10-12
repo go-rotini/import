@@ -132,11 +132,11 @@ type Level string
 
 // The note levels.
 const (
-	// Lossy: carried across, but something about it changed or was lost.
+	// Lossy means carried across, but something about it changed or was lost.
 	Lossy Level = "lossy"
-	// Unsupported: dropped, because rotini has no equivalent.
+	// Unsupported means dropped, because rotini has no equivalent.
 	Unsupported Level = "unsupported"
-	// Info: carried across faithfully, with something worth knowing.
+	// Info means carried across faithfully, with something worth knowing.
 	Info Level = "info"
 )
 

@@ -35,7 +35,8 @@ type importer struct {
 // FromCobra imports the tree that cmd belongs to, starting at its root.
 //
 // It changes the tree the way Cobra's own Execute would: it adds the default help and
-// completion commands to the root and the help and version flags to every command. Call it
+// completion commands to the root, the help flag to every command and the version flag to
+// every command that sets Version, each where Cobra itself would add it. Call it
 // on a tree that is not executing. A panic inside Cobra while walking is returned as an
 // error.
 func FromCobra(cmd *cobra.Command, opts Options) (res *imp.Result, err error) {
