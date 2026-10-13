@@ -73,7 +73,7 @@ func FromURFave(cmd *cli.Command, opts Options) (res *imp.Result, err error) {
 	rc := im.command(root, walk.CommandName(name), "", name)
 	im.programNotes(rc)
 	return &imp.Result{
-		Source:  walk.Source("urfave", cliModule),
+		Source:  walk.Source("urfave", cliModule, cli.HandleExitCoder),
 		Command: rc,
 		Notes:   im.notes,
 		Hooks:   im.hooks,
@@ -144,7 +144,12 @@ func fieldFunc(p any, name string) any {
 	return nil
 }
 
-func isCLIFunc(f any) bool { return strings.HasPrefix(walk.FuncName(f), cliPrefix) }
+// isCLIFunc reports whether f is urfave/cli's own code. A closure can be named after the
+// function it was inlined into, so a function written in urfave/cli's source directory
+// counts too.
+func isCLIFunc(f any) bool {
+	return strings.HasPrefix(walk.FuncName(f), cliPrefix) || walk.DefinedBeside(f, cli.HandleExitCoder)
+}
 
 func (im *importer) command(c *cli.Command, name, parent, origName string) *imp.Command {
 	isRoot := parent == ""
@@ -354,13 +359,13 @@ func (im *importer) passthrough(path string, rc *imp.Command, hasSubs bool) {
 func (im *importer) programNotes(rc *imp.Command) {
 	path := rc.Name
 	m := walk.NewMachine(path)
+	if im.testRoot != "" {
+		m.RenamedRoot(im.testRoot)
+	}
 	m.ScrubNotes(im.notes)
 	m.Scrub(rc, path, func(p string, level imp.Level, msg string) { im.notef(p, level, "%s", msg) })
-	if im.testRoot != "" {
-		im.notef(path, imp.Info, "the root's name %q is the test binary's name, which the program read from os.Args[0]; it was imported as %q", im.testRoot, path)
-	}
 	for _, msg := range walk.SharedHooks(im.hooks) {
-		im.notef(path, imp.Info, "%s", msg)
+		im.notef(path, imp.Info, "%s", m.ScrubNote(msg))
 	}
 	if im.groupHelp {
 		im.notef(path, imp.Info, "urfave/cli also answers \"<command> help\" on each command with sub-commands; rotini's help command is on the root only, so \"help <command>\" or --help reaches that help")

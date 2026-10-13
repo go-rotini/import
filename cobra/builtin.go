@@ -128,7 +128,9 @@ func hasPersistentHook(c *cobra.Command) bool {
 		c.PersistentPostRun != nil || c.PersistentPostRunE != nil
 }
 
-// isCobraFunc reports whether f is Cobra's own code: a stock validator or a default.
+// isCobraFunc reports whether f is Cobra's own code: a stock validator or a default. A
+// closure such as the one cobra.ExactArgs returns can be named after the function it was
+// inlined into, so a function written in Cobra's own source directory counts too.
 func isCobraFunc(f any) bool {
-	return strings.HasPrefix(walk.FuncName(f), cobraPkgPrefix)
+	return strings.HasPrefix(walk.FuncName(f), cobraPkgPrefix) || walk.DefinedBeside(f, cobra.NoArgs)
 }

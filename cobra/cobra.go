@@ -68,7 +68,7 @@ func FromCobra(cmd *cobra.Command, opts Options) (res *imp.Result, err error) {
 	rc := im.command(root, rootName, "")
 	im.programNotes(root, rc)
 	return &imp.Result{
-		Source:  walk.Source("cobra", cobraModule),
+		Source:  walk.Source("cobra", cobraModule, cobra.NoArgs),
 		Command: rc,
 		Notes:   im.notes,
 		Hooks:   im.hooks,
@@ -320,13 +320,13 @@ func (im *importer) optionsFirst(path string, rc *imp.Command) {
 func (im *importer) programNotes(root *cobra.Command, rc *imp.Command) {
 	path := rc.Name
 	m := walk.NewMachine(path)
+	if im.testRoot != "" {
+		m.RenamedRoot(im.testRoot)
+	}
 	m.ScrubNotes(im.notes)
 	m.Scrub(rc, path, func(p string, level imp.Level, msg string) { im.notef(p, level, "%s", msg) })
-	if im.testRoot != "" {
-		im.notef(path, imp.Info, "the root's name %q is the test binary's name, which the program read from os.Args[0]; it was imported as %q", im.testRoot, path)
-	}
 	for _, msg := range walk.SharedHooks(im.hooks) {
-		im.notef(path, imp.Info, "%s", msg)
+		im.notef(path, imp.Info, "%s", m.ScrubNote(msg))
 	}
 	if im.deprecations {
 		im.notef(path, imp.Info, "Cobra prints deprecation warnings itself; in rotini a hook reads rotini.Deprecations and prints them")

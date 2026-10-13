@@ -24,9 +24,10 @@ type Result struct {
 type Source struct {
 	// Framework is the framework's short name, such as "cobra".
 	Framework string `json:"framework"`
-	// Version is the framework module's version in the imported program, when known.
+	// Version is the framework module's version in the imported program, when known. A
+	// module replaced by a local directory has none under Go releases before 1.27.
 	Version string `json:"version,omitempty"`
-	// Importer is the importer module's version, when known.
+	// Importer is the importer module's version, when known, with the same limit.
 	Importer string `json:"importer,omitempty"`
 }
 

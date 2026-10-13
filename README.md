@@ -18,7 +18,7 @@ One module holds the description and one package per framework:
 - Names arguments from the usage line (Cobra's `Use`, urfave/cli's `ArgsUsage`) where the framework declares none, sanitised to valid names and de-duplicated
 - Reports what it cannot carry across exactly, one note per item, graded `lossy`, `unsupported` or `info`
 - Points at every run hook with its file and line, mapped to the matching rotini handler hook
-- Leaves out what the program worked out on the importing machine: a default under the home, cache, configuration, per-user temporary or working directory, or holding the host name, is dropped with a note; in help text, with a note, and in notes the same paths are written as tokens (`~/.app.yaml`); a default under a shared temporary directory such as `/tmp` is kept with a note; and the test binary's name read from `os.Args[0]` is replaced by the program's, including a root named after it
+- Leaves out what the program worked out on the importing machine: a default under the home, cache, configuration, per-user temporary or working directory, or holding the host name, is dropped with a note; in help text, with a note, and in notes the same paths are written as tokens (`~/.app.yaml`); a default under a shared temporary directory such as `/tmp` is kept with a note; and the test binary's name read from `os.Args[0]` is replaced by the program's, including a root named after it or after the binary's full path
 - A versioned JSON description (`"format": "rotini-import/1"`); `Read` refuses a major version it does not know
 
 ## Installation
@@ -30,6 +30,12 @@ go get github.com/go-rotini/import
 ```
 
 Requires Go 1.22 or later, and Cobra 1.6, Kong 0.9 or urfave/cli 3.1 or later.
+
+A test binary built by Go before 1.27 records no dependencies. There the framework's and the
+importer's versions are read from the module cache directories their source files are in, so a
+module replaced by a local directory has no version in the description, and the notes for a
+linked configuration or completion module (Viper, urfave/cli-altsrc, Kong's loaders, kongplete)
+are not written.
 
 ## Quick Start
 

@@ -92,7 +92,11 @@ func (im *importer) arguments(c *cobra.Command, path string) []*imp.Argument {
 	if !c.Runnable() {
 		return nil // Cobra shows help for a command it cannot run, whatever the words
 	}
-	declared := walk.ParseUse(c.Use)
+	use := c.Use
+	if !c.HasParent() {
+		use = walk.CutProgram(use)
+	}
+	declared := walk.ParseUse(use)
 	if c.Args == nil {
 		if c.HasSubCommands() && !c.HasParent() {
 			return nil // Cobra's legacy check rejects a root's positionals that name no sub-command

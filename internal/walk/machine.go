@@ -19,7 +19,9 @@ type Machine struct {
 	dirs     []machineDir // longest first, so the most specific one is named
 	hosts    []string
 	testName string // the test binary's name, "" outside go test
-	name     string // the program's name, which replaces testName
+	testPath string // the test binary's path as os.Args[0] holds it, "" outside go test
+	name     string // the program's name, which replaces testName and testPath
+	testRoot string // the root's name when it was the test binary's name or path, else ""
 	// sharedTemp is the system temporary directory when it is a shared one, such as /tmp,
 	// which find does not look for, else "".
 	sharedTemp string
@@ -62,9 +64,16 @@ func NewMachine(program string) *Machine {
 	}
 	if base := testBinary(); base != "" && base != program {
 		m.testName = base
+		if os.Args[0] != base {
+			m.testPath = os.Args[0]
+		}
 	}
 	return m
 }
+
+// RenamedRoot records that the root's name, orig, was the test binary's name or path and was
+// imported as the program's name, so [Machine.Scrub] reports both renamings in one note.
+func (m *Machine) RenamedRoot(orig string) { m.testRoot = orig }
 
 // testBinary is the running test binary's name, without ".exe", or "" outside go test.
 func testBinary() string {
@@ -75,15 +84,43 @@ func testBinary() string {
 	return base
 }
 
-// ProgramName returns name without the ".test" suffix go test gives a binary when name is
-// the running test binary's name, as a program that names itself from os.Args[0] reads it
-// under the import, and reports whether it did.
+// ProgramName returns the program's name, the test binary's base name without ".exe" and the
+// ".test" suffix go test adds, when name is what a program that names itself from os.Args[0]
+// reads under the import: the test binary's name or its full path. It reports whether it did.
+// A name is never made from the directories in the path.
 func ProgramName(name string) (string, bool) {
 	base := testBinary()
-	if base == "" || (name != base && name != base+".exe") {
+	if base == "" || !isTestBinary(name, base) {
 		return name, false
 	}
 	return strings.TrimSuffix(base, ".test"), true
+}
+
+// isTestBinary reports whether name is os.Args[0] or names the test binary base. A path
+// that holds a space is cut there by a framework that takes a command's name as the first
+// word of its usage line, so the part before the first space counts too.
+func isTestBinary(name, base string) bool {
+	arg0 := os.Args[0]
+	if name == "" {
+		return false
+	}
+	if name == arg0 || strings.HasPrefix(arg0, name+" ") {
+		return true
+	}
+	return strings.TrimSuffix(filepath.Base(name), ".exe") == base
+}
+
+// CutProgram replaces the test binary's full path at the start of a usage line with its base
+// name, so the words of a path that holds spaces are not read as arguments.
+func CutProgram(use string) string {
+	arg0 := os.Args[0]
+	if testBinary() == "" || arg0 == filepath.Base(arg0) {
+		return use
+	}
+	if rest, ok := strings.CutPrefix(use, arg0); ok && (rest == "" || rest[0] == ' ') {
+		return filepath.Base(arg0) + rest
+	}
+	return use
 }
 
 // sharedDirs are system-wide temporary directories. A program that writes one literally
@@ -176,12 +213,34 @@ func (m *Machine) underSharedTemp(v any) bool {
 	}) != ""
 }
 
-// text replaces the test binary's name in help text with the program's name.
+// text replaces the test binary's path and name in help text with the program's name.
 func (m *Machine) text(s string) (string, bool) {
 	if m.testName == "" {
 		return s, false
 	}
-	return replaceWord(s, m.testName, "", m.name)
+	pathHit := false
+	if m.testPath != "" {
+		for _, p := range pathForms(m.testPath) {
+			var ok bool
+			s, ok = replaceWord(s, p, "", m.name)
+			pathHit = pathHit || ok
+		}
+	}
+	s, ok := replaceWord(s, m.testName, "", m.name)
+	return s, ok || pathHit
+}
+
+// pathForms lists the ways text can spell a path: as it is, with backslashes for slashes,
+// and with each backslash doubled, as Go's %q quotes one.
+func pathForms(p string) []string {
+	back := strings.ReplaceAll(p, "/", `\`)
+	out := []string{p}
+	for _, f := range []string{back, strings.ReplaceAll(back, `\`, `\\`)} {
+		if !slices.Contains(out, f) {
+			out = append(out, f)
+		}
+	}
+	return out
 }
 
 // tokens writes this machine's directories and host name in help text as the tokens
@@ -209,7 +268,7 @@ func (m *Machine) tokensOnce(s string) (string, [][2]string) {
 	var found [][2]string
 	for _, d := range m.dirs {
 		hit := false
-		for _, dir := range []string{d.dir, filepath.FromSlash(d.dir)} {
+		for _, dir := range pathForms(d.dir) {
 			var ok bool
 			s, ok = replaceWord(s, dir, "/", d.token)
 			hit = hit || ok
@@ -265,23 +324,41 @@ func (m *Machine) shown(v any) string {
 // it on the notes written before Scrub runs, since some quote the values Scrub is for.
 func (m *Machine) ScrubNotes(notes []imp.Note) {
 	for i := range notes {
-		msg, _ := m.text(notes[i].Msg)
-		notes[i].Msg, _ = m.tokens(msg)
+		notes[i].Msg = m.ScrubNote(notes[i].Msg)
 	}
+}
+
+// ScrubNote is [Machine.ScrubNotes] for one note's text.
+func (m *Machine) ScrubNote(msg string) string {
+	msg, _ = m.text(msg)
+	msg, _ = m.tokens(msg)
+	return msg
 }
 
 // Scrub walks the imported tree under c, whose path is path. It writes the program's name
 // where help text holds the test binary's name, writes this machine's directories and host
 // name in help text as tokens ("~/.app.yaml"), and drops each default or implicit value
 // worked out on this machine. It reports the tokens once per command, each dropped value,
-// and the renaming once, through note.
+// and the renaming once, together with the root's when [Machine.RenamedRoot] recorded it,
+// through note.
 func (m *Machine) Scrub(c *imp.Command, path string, note func(path string, level imp.Level, msg string)) {
-	switch n := m.scrub(c, path, note); n {
-	case 0:
-	case 1:
-		note(path, imp.Info, fmt.Sprintf("the test binary's name %q, which the program read from os.Args[0], was replaced by %q in one command", m.testName, m.name))
-	default:
-		note(path, imp.Info, fmt.Sprintf("the test binary's name %q, which the program read from os.Args[0], was replaced by %q in %d commands", m.testName, m.name, n))
+	n := m.scrub(c, path, note)
+	commands := "one command"
+	if n > 1 {
+		commands = fmt.Sprintf("%d commands", n)
+	}
+	switch {
+	case m.testRoot != "":
+		msg := fmt.Sprintf("the root's name %q is the test binary's name, which the program read from os.Args[0]; it was imported as %q", m.testRoot, m.name)
+		if strings.ContainsAny(m.testRoot, `/\`) {
+			msg = fmt.Sprintf("the root's name is the test binary's path, which the program read from os.Args[0]; it was imported as %q", m.name)
+		}
+		if n > 0 {
+			msg += ", and the test binary's name was replaced by it in the help text of " + commands
+		}
+		note(path, imp.Info, msg)
+	case n > 0:
+		note(path, imp.Info, fmt.Sprintf("the test binary's name %q, which the program read from os.Args[0], was replaced by %q in %s", m.testName, m.name, commands))
 	}
 }
 
@@ -502,26 +579,49 @@ func Cascade(inherited map[string]string, flags []*imp.Flag, orig map[*imp.Flag]
 
 // SharedHooks returns a message for each closure that is the same hook of several commands:
 // a wrapper, such as one that records telemetry before calling the command's own function,
-// which every hook pointer then names.
+// which every hook pointer then names. Closures are matched by where they are written, since
+// one the compiler inlined into each caller can carry a different name in each.
 func SharedHooks(hooks []imp.Hook) []string {
-	type key struct{ framework, fn string }
-	count := map[key]int{}
+	type key struct {
+		framework, file string
+		line            int
+		fn              string // only when the file is unknown
+	}
+	type group struct {
+		fn    string // the closure's name, "" when the commands' names for it differ
+		count int
+	}
+	groups := map[key]*group{}
 	var order []key
 	for _, h := range hooks {
-		k := key{h.Framework, h.Func}
 		if !strings.Contains(h.Func, ".func") {
 			continue
 		}
-		if count[k] == 0 {
-			order = append(order, k)
+		k := key{framework: h.Framework, file: h.File, line: h.Line}
+		if h.File == "" {
+			k.fn = h.Func
 		}
-		count[k]++
+		g := groups[k]
+		if g == nil {
+			g = &group{fn: h.Func}
+			groups[k] = g
+			order = append(order, k)
+		} else if g.fn != h.Func {
+			g.fn = ""
+		}
+		g.count++
 	}
 	var out []string
 	for _, k := range order {
-		if n := count[k]; n > 1 {
-			out = append(out, fmt.Sprintf("%s is the %s of %d commands: it is a closure one function made for each, so the code to port is in the function each command passed to it", k.fn, k.framework, n))
+		g := groups[k]
+		if g.count < 2 {
+			continue
 		}
+		what := g.fn
+		if what == "" {
+			what = fmt.Sprintf("the closure at %s:%d", k.file, k.line)
+		}
+		out = append(out, fmt.Sprintf("%s is the %s of %d commands: it is a closure one function made for each, so the code to port is in the function each command passed to it", what, k.framework, g.count))
 	}
 	return out
 }

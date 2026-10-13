@@ -693,4 +693,18 @@ func TestRootNamedFromArgs0(t *testing.T) {
 	}
 	find(t, res, prog+" sub")
 	wantNote(t, res, prog, imp.Info, "is the test binary's name, which the program read from os.Args[0]")
+
+	// The full path, as os.Args[0] holds it, names the root after the binary alone.
+	root = &cli.Command{Name: os.Args[0], Usage: "the " + os.Args[0] + " tool", Commands: []*cli.Command{{Name: "sub", Action: action}}}
+	res = importTree(t, root, urfaveimport.Options{})
+	if res.Command.Name != prog || res.Command.Summary != "the "+prog+" tool" {
+		t.Errorf("root %q, summary %q", res.Command.Name, res.Command.Summary)
+	}
+	find(t, res, prog+" sub")
+	wantNote(t, res, prog, imp.Info, "the root's name is the test binary's path, which the program read from os.Args[0]")
+	for _, n := range res.Notes {
+		if strings.Contains(n.Msg, filepath.Dir(os.Args[0])) {
+			t.Errorf("note quotes the test binary's path: %s", n.Msg)
+		}
+	}
 }

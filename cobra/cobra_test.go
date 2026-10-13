@@ -987,7 +987,15 @@ func TestSharedWrapperHooks(t *testing.T) {
 		&cobra.Command{Use: "b", RunE: wrap(func(*cobra.Command, []string) error { return nil })},
 	)
 	res := importTree(t, root, cobraimport.Options{})
-	wantNote(t, res, "app", imp.Info, "cobra_test.wrap.func1 is the RunE of 2 commands")
+	// Go releases that name an inlined closure after its caller give each command's closure
+	// its own name, so the note names where the closure is written instead.
+	wantNote(t, res, "app", imp.Info, "is the RunE of 2 commands")
+	for _, n := range res.Notes {
+		if strings.Contains(n.Msg, "is the RunE of 2 commands") &&
+			!strings.HasPrefix(n.Msg, "github.com/go-rotini/import/cobra_test.wrap.func1 ") && !strings.Contains(n.Msg, "cobra_test.go:") {
+			t.Errorf("shared hook note names neither the closure nor where it is written: %s", n.Msg)
+		}
+	}
 }
 
 func TestMachineValues(t *testing.T) {
@@ -1068,5 +1076,20 @@ func TestRootNamedFromArgs0(t *testing.T) {
 		t.Errorf("root %q, summary %q, examples %q", res.Command.Name, res.Command.Summary, res.Command.Examples)
 	}
 	find(t, res, prog+" sub")
-	wantNote(t, res, prog, imp.Info, "is the test binary's name, which the program read from os.Args[0]; it was imported as "+fmt.Sprintf("%q", prog))
+	wantNote(t, res, prog, imp.Info, "is the test binary's name, which the program read from os.Args[0]; it was imported as "+fmt.Sprintf("%q", prog)+", and the test binary's name was replaced by it in the help text of one command")
+
+	// The full path, as os.Args[0] holds it, names the root after the binary alone.
+	root = &cobra.Command{Use: os.Args[0] + " <file>", Args: cobra.ExactArgs(1), Run: run, Short: "the " + os.Args[0] + " tool"}
+	root.AddCommand(&cobra.Command{Use: "sub", Run: run})
+	res = importTree(t, root, cobraimport.Options{})
+	if res.Command.Name != prog || res.Command.Summary != "the "+prog+" tool" || argSummary(res.Command) != "file:string!" {
+		t.Errorf("root %q, summary %q, args %q", res.Command.Name, res.Command.Summary, argSummary(res.Command))
+	}
+	find(t, res, prog+" sub")
+	wantNote(t, res, prog, imp.Info, "the root's name is the test binary's path, which the program read from os.Args[0]; it was imported as "+fmt.Sprintf("%q", prog))
+	for _, n := range res.Notes {
+		if strings.Contains(n.Msg, os.Args[0]) || strings.Contains(n.Msg, filepath.Dir(os.Args[0])) {
+			t.Errorf("note quotes the test binary's path: %s", n.Msg)
+		}
+	}
 }

@@ -2,6 +2,7 @@ package walk
 
 import (
 	"errors"
+	"os"
 	"reflect"
 	"runtime"
 	"strings"
@@ -141,11 +142,38 @@ func TestSmallHelpers(t *testing.T) {
 	if got, _ := SplitExamples("  a \n\n b"); !reflect.DeepEqual(got, []string{"a", "b"}) {
 		t.Errorf("SplitExamples = %q", got)
 	}
-	if s := Source("x", "example.com/none"); s.Framework != "x" || s.Version != "" {
+	if s := Source("x", "example.com/none", strings.ToUpper); s.Framework != "x" || s.Version != "" {
 		t.Errorf("Source = %+v", s)
 	}
 	if DependsOn("example.com/none") {
 		t.Error("DependsOn a module that is not linked")
+	}
+}
+
+func TestFileVersion(t *testing.T) {
+	for _, tc := range []struct{ file, module, want string }{
+		{"/home/me/go/pkg/mod/github.com/spf13/cobra@v1.8.0/args.go", "github.com/spf13/cobra", "v1.8.0"},
+		{"github.com/spf13/cobra@v1.8.0/args.go", "github.com/spf13/cobra", "v1.8.0"},
+		{`C:/Users/me/go/pkg/mod/github.com/!burnt!sushi/toml@v1.3.2/decode.go`, "github.com/BurntSushi/toml", "v1.3.2"},
+		{"/go/pkg/mod/github.com/urfave/cli/v3@v3.1.0/help.go", "github.com/urfave/cli/v3", "v3.1.0"},
+		// A longer module path that ends in the same words is not the module.
+		{"/go/pkg/mod/example.com/x-github.com/spf13/cobra@v1.0.0/a.go", "github.com/spf13/cobra", ""},
+		{"/src/cobra/args.go", "github.com/spf13/cobra", ""},
+		{"/go/pkg/mod/github.com/spf13/cobra@v1.8.0", "github.com/spf13/cobra", ""},
+	} {
+		if got := fileVersion(tc.file, tc.module); got != tc.want {
+			t.Errorf("fileVersion(%q, %q) = %q, want %q", tc.file, tc.module, got, tc.want)
+		}
+	}
+}
+
+func TestDefinedBeside(t *testing.T) {
+	local := func() {}
+	if !DefinedBeside(local, CommandName) || !DefinedBeside(JoinPath, CommandName) {
+		t.Error("a function of this package is not beside another")
+	}
+	if DefinedBeside(strings.ToUpper, CommandName) || DefinedBeside(nil, CommandName) || DefinedBeside(local, nil) {
+		t.Error("DefinedBeside matched another package or nil")
 	}
 }
 
@@ -399,6 +427,17 @@ func TestSharedHooks(t *testing.T) {
 	if len(got) != 1 || !strings.Contains(got[0], "example.com/x.Wrap.func1 is the RunE of 2 commands") {
 		t.Fatalf("SharedHooks = %q", got)
 	}
+
+	// A closure inlined into each caller is named after the caller, but written in one place.
+	hooks = []imp.Hook{
+		{Path: "a x", Framework: "RunE", Func: "example.com/x.init.Wrap.func3", File: "x/wrap.go", Line: 7},
+		{Path: "a y", Framework: "RunE", Func: "example.com/x.init.Wrap.func4", File: "x/wrap.go", Line: 7},
+		{Path: "a z", Framework: "RunE", Func: "example.com/x.init.func5", File: "x/wrap.go", Line: 12},
+	}
+	got = SharedHooks(hooks)
+	if len(got) != 1 || !strings.Contains(got[0], "the closure at x/wrap.go:7 is the RunE of 2 commands") {
+		t.Fatalf("SharedHooks of inlined closures = %q", got)
+	}
 }
 
 func TestMachineSharedTempNote(t *testing.T) {
@@ -425,21 +464,29 @@ func TestMachineSharedTempNote(t *testing.T) {
 
 func TestMachineScrubNotes(t *testing.T) {
 	m := &Machine{
-		dirs:     []machineDir{{"/home/me", "the home directory", "~"}},
+		dirs:     []machineDir{{"C:/Users/alice", "the home directory", "~"}, {"/home/me", "the home directory", "~"}},
 		hosts:    []string{"buildbox-7"},
 		testName: "app.test",
+		testPath: "C:/Users/alice/AppData/Local/Temp/go-build1/b001/app.test.exe",
 		name:     "app",
 	}
 	notes := []imp.Note{
 		{Path: "app", Level: imp.Lossy, Msg: "--state is required and has the default /home/me/.app-state: dropped"},
 		{Path: "app", Level: imp.Lossy, Msg: `comment lines in the examples dropped: ["write to /home/me/out on buildbox-7"]`},
 		{Path: "app", Level: imp.Info, Msg: "run app.test help; /home/meal stays"},
+		// Windows paths, as written and as %q quotes them.
+		{Path: "app", Level: imp.Lossy, Msg: `comment lines in the examples dropped: ["write to C:\\Users\\alice\\out"]`},
+		{Path: "app", Level: imp.Lossy, Msg: `the default C:\Users\alice\.app holds the home directory`},
+		{Path: "app", Level: imp.Lossy, Msg: `the Use line "C:\\Users\\alice\\AppData\\Local\\Temp\\go-build1\\b001\\app.test.exe <a>" names no argument`},
 	}
 	m.ScrubNotes(notes)
 	for i, want := range []string{
 		"--state is required and has the default ~/.app-state: dropped",
 		`comment lines in the examples dropped: ["write to ~/out on <host>"]`,
 		"run app help; /home/meal stays",
+		`comment lines in the examples dropped: ["write to ~\\out"]`,
+		`the default ~\.app holds the home directory`,
+		`the Use line "app <a>" names no argument`,
 	} {
 		if notes[i].Msg != want {
 			t.Errorf("note %d: %q, want %q", i, notes[i].Msg, want)
@@ -475,5 +522,37 @@ func TestProgramName(t *testing.T) {
 	}
 	if name, ok := ProgramName("app"); ok || name != "app" {
 		t.Errorf("ProgramName(app) = %q, %v", name, ok)
+	}
+}
+
+func TestProgramNameFromPath(t *testing.T) {
+	arg0 := os.Args[0]
+	t.Cleanup(func() { os.Args[0] = arg0 })
+	os.Args[0] = "/tmp/John Smith/go-build1/b001/app.test"
+	for _, name := range []string{
+		os.Args[0],
+		"app.test",
+		"app.test.exe",
+		"/elsewhere/app.test",
+		"/tmp/John", // a framework that cuts the usage line at the first space
+	} {
+		if got, ok := ProgramName(name); !ok || got != "app" {
+			t.Errorf("ProgramName(%q) = %q, %v", name, got, ok)
+		}
+	}
+	for _, name := range []string{"", "/tmp/John Smith/go-build1/b001", "app", "/tmp"} {
+		if got, ok := ProgramName(name); ok || got != name {
+			t.Errorf("ProgramName(%q) = %q, %v", name, got, ok)
+		}
+	}
+	if got := CutProgram(os.Args[0] + " <a> [b]"); got != "app.test <a> [b]" {
+		t.Errorf("CutProgram = %q", got)
+	}
+	if got := CutProgram(os.Args[0] + "x <a>"); got != os.Args[0]+"x <a>" {
+		t.Errorf("CutProgram of another path = %q", got)
+	}
+	m := NewMachine("app")
+	if got, _ := m.text("usage: " + os.Args[0] + " sub, or app.test sub"); got != "usage: app sub, or app sub" {
+		t.Errorf("text = %q", got)
 	}
 }

@@ -408,7 +408,8 @@ func (im *importer) completion(c *cobra.Command, path, what string, fn completio
 	switch {
 	case name == "github.com/spf13/cobra.NoFileCompletions":
 		s.Complete = &imp.Complete{Kind: "none"}
-	case strings.HasPrefix(name, "github.com/spf13/cobra.FixedCompletions"):
+	case strings.HasPrefix(name, "github.com/spf13/cobra.FixedCompletions") ||
+		(strings.Contains(name, ".FixedCompletions.func") && isCobraFunc(fn)):
 		im.notef(path, imp.Lossy, "%s completes the fixed list %v: add enum: if the set is closed", what, fixedValues(c, fn))
 	default:
 		im.notef(path, imp.Lossy, "%s has a Go completion function (%s): reimplement it as a rotini completer", what, name)

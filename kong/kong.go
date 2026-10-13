@@ -78,7 +78,7 @@ func FromKong(grammar any, opts Options) (res *imp.Result, err error) {
 	m.Scrub(rc, name, func(p string, level imp.Level, msg string) { im.notef(p, level, "%s", msg) })
 	im.programNotes(name)
 	return &imp.Result{
-		Source:  walk.Source("kong", kongModule),
+		Source:  walk.Source("kong", kongModule, kong.New),
 		Command: rc,
 		Notes:   im.notes,
 		Hooks:   im.hooks,

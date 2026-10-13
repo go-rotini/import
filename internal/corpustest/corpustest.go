@@ -10,9 +10,11 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"go/version"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -216,7 +218,9 @@ func Check(t *testing.T, golden, fixture, pkg string, src TestFile) {
 	if after := Snapshot(t, dir); after != before {
 		t.Fatalf("the import changed the fixture's files")
 	}
-	if res.Source.Importer == "" {
+	// Go before 1.27 records no module versions in a test binary, and the importer here is a
+	// local directory, so its version is not in the source file's path either.
+	if res.Source.Importer == "" && version.Compare(runtime.Version(), "go1.27") >= 0 {
 		t.Fatal("the description does not name the importer's version")
 	}
 	Normalize(res, dir)
