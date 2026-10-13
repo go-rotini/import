@@ -164,6 +164,7 @@ type Hook struct {
 	Func string `json:"func,omitempty"`
 	// File and Line locate the function. File is absolute for code in the program's own
 	// module and module-cache relative ("example.com/x@v1.2.3/cmd.go") for a dependency.
+	// Both are empty when a method value's method cannot be located.
 	File string `json:"file,omitempty"`
 	Line int    `json:"line,omitempty"`
 }

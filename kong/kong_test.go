@@ -548,3 +548,62 @@ func TestKongOptions(t *testing.T) {
 		t.Fatalf("flags without the default help: %+v", res.Command.Flags)
 	}
 }
+
+func TestCounterDefaultAndEscapedSeparator(t *testing.T) {
+	var grammar struct {
+		Count int      `type:"counter" default:"2"`
+		List  []string `default:"a\\,b,c"`
+	}
+	res := importGrammar(t, &grammar, kongimport.Options{})
+	if got := flagNamed(t, res.Command, "count").Schema.Default; got != int64(2) {
+		t.Errorf("--count default %#v", got)
+	}
+	if got := flagNamed(t, res.Command, "list").Schema.Default; !reflect.DeepEqual(got, []any{"a,b", "c"}) {
+		t.Errorf("--list default %#v", got)
+	}
+
+	// Kong reads a counter's default in base 10.
+	var bases struct {
+		Octal int `type:"counter" default:"010"`
+		Hex   int `type:"counter" default:"0x10"`
+	}
+	res = importGrammar(t, &bases, kongimport.Options{})
+	if got := flagNamed(t, res.Command, "octal").Schema.Default; got != int64(10) {
+		t.Errorf("--octal default %#v", got)
+	}
+	if got := flagNamed(t, res.Command, "hex").Schema.Default; got != nil {
+		t.Errorf("--hex default %#v", got)
+	}
+	wantNote(t, res, "app", imp.Lossy, `--hex: the counter default "0x10" is not a decimal whole number`)
+}
+
+func TestCommandNamesThatCollideOnceValid(t *testing.T) {
+	var grammar struct {
+		Dotted struct{} `cmd:"" name:"a.b"`
+		Dashed struct{} `cmd:"" name:"a-b"`
+	}
+	res := importGrammar(t, &grammar, kongimport.Options{})
+	if got := names(res.Command.Commands); len(got) != 2 || got[0] == got[1] {
+		t.Fatalf("commands %v", got)
+	}
+}
+
+func names(cs []*imp.Command) []string {
+	out := make([]string, 0, len(cs))
+	for _, c := range cs {
+		out = append(out, c.Name)
+	}
+	return out
+}
+
+func TestRenamedFlagDoesNotShadowInherited(t *testing.T) {
+	var grammar struct {
+		FooBar string `name:"foo-bar"`
+		Sub    struct {
+			Dotted string `name:"foo.bar"`
+		} `cmd:""`
+	}
+	res := importGrammar(t, &grammar, kongimport.Options{})
+	flagNamed(t, find(t, res, "app sub"), "foo-bar-2")
+	wantNote(t, res, "app sub", imp.Lossy, "would be --foo-bar, the name of the inherited flag --foo-bar")
+}

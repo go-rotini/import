@@ -559,3 +559,113 @@ func TestCommandNotes(t *testing.T) {
 	}
 	wantNote(t, res, "app run", imp.Lossy, "custom help template")
 }
+
+// valFlag is a flag stored by value whose struct cannot be compared.
+type valFlag struct {
+	Name  string
+	Extra []string
+}
+
+func (f valFlag) String() string                                { return f.Name }
+func (f valFlag) Get() any                                      { return nil }
+func (f valFlag) PreParse() error                               { return nil }
+func (f valFlag) PostParse() error                              { return nil }
+func (f valFlag) Set(string, string) error                      { return nil }
+func (f valFlag) Names() []string                               { return []string{f.Name} }
+func (f valFlag) IsSet() bool                                   { return false }
+func (f valFlag) Apply(any) error                               { return nil }
+func (f valFlag) TakesValue() bool                              { return true }
+func (f valFlag) IsDefaultVisible() bool                        { return true }
+func (f valFlag) GetDefaultText() string                        { return "" }
+func (f valFlag) TypeName() string                              { return "x" }
+func (f valFlag) GetValue() string                              { return "" }
+func (f valFlag) IsRequired() bool                              { return false }
+func (f valFlag) IsVisible() bool                               { return true }
+func (f valFlag) GetUsage() string                              { return "" }
+func (f valFlag) GetEnvVars() []string                          { return nil }
+func (f valFlag) GetCategory() string                           { return "" }
+func (f valFlag) IsLocal() bool                                 { return false }
+func (f valFlag) IsBoolFlag() bool                              { return false }
+func (f valFlag) Count() int                                    { return 0 }
+func (f valFlag) IsMultiValueFlag() bool                        { return false }
+func (f valFlag) PreParseOnly() bool                            { return false }
+func (f valFlag) RunAction(context.Context, *cli.Command) error { return nil }
+
+func TestUnhashableFlag(t *testing.T) {
+	root := &cli.Command{Name: "app", Flags: []cli.Flag{valFlag{Name: "x", Extra: []string{"a"}}}}
+	res := importTree(t, root, urfaveimport.Options{})
+	flagNamed(t, res.Command, "x")
+}
+
+type actions struct{ fail bool }
+
+func (a actions) run(context.Context, *cli.Command) error {
+	if a.fail {
+		return fmt.Errorf("failed")
+	}
+	return nil
+}
+
+func TestGroupThatRunsTakesArguments(t *testing.T) {
+	o := actions{}
+	build := func() *cli.Command {
+		return &cli.Command{Name: "app", Commands: []*cli.Command{
+			{Name: "grp", ArgsUsage: "[thing]", Action: o.run, Commands: []*cli.Command{{Name: "leaf", Action: action}}},
+			{Name: "plain", Commands: []*cli.Command{{Name: "leaf", Action: action}}},
+		}}
+	}
+	// urfave/cli runs the group's Action with words that name no sub-command.
+	var got []string
+	run := build()
+	run.Commands[0].Action = func(_ context.Context, c *cli.Command) error { got = c.Args().Slice(); return nil }
+	if err := run.Run(context.Background(), []string{"app", "grp", "extra"}); err != nil || !reflect.DeepEqual(got, []string{"extra"}) {
+		t.Fatalf("urfave/cli ran grp with %v, %v", got, err)
+	}
+
+	res := importTree(t, build(), urfaveimport.Options{})
+	var args []string
+	for _, a := range find(t, res, "app grp").Arguments {
+		args = append(args, a.Name+":"+a.Schema.Type)
+	}
+	if !reflect.DeepEqual(args, []string{"thing:string", "args:[]string"}) {
+		t.Fatalf("grp arguments %v", args)
+	}
+	if len(find(t, res, "app plain").Arguments) != 0 {
+		t.Fatal("a group with no Action took arguments")
+	}
+	wantNote(t, res, "app", imp.Info, `answers "<command> help"`)
+	found := false
+	for _, h := range res.Hooks {
+		if h.Path == "app grp" {
+			found = true
+			if h.Func != "github.com/go-rotini/import/urfave_test.actions.run" || !strings.HasSuffix(h.File, "urfave_test.go") || h.Line == 0 {
+				t.Fatalf("method value hook %+v", h)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("no hook for app grp")
+	}
+}
+
+func TestFlagNamesThatCollideOnceValid(t *testing.T) {
+	root := &cli.Command{Name: "app", Flags: []cli.Flag{
+		&cli.StringFlag{Name: "foo.bar"},
+		&cli.StringFlag{Name: "foo-bar"},
+	}}
+	res := importTree(t, root, urfaveimport.Options{})
+	flagNamed(t, res.Command, "foo-bar")
+	flagNamed(t, res.Command, "foo-bar-2")
+	wantNote(t, res, "app", imp.Lossy, "which another already has")
+}
+
+func TestRenamedFlagDoesNotShadowInherited(t *testing.T) {
+	root := &cli.Command{
+		Name:     "app",
+		Flags:    []cli.Flag{&cli.StringFlag{Name: "foo-bar"}},
+		Commands: []*cli.Command{{Name: "sub", Flags: []cli.Flag{&cli.StringFlag{Name: "foo.bar"}}}},
+	}
+	res := importTree(t, root, urfaveimport.Options{})
+	flagNamed(t, find(t, res, "app sub"), "foo-bar-2")
+	wantNote(t, res, "app sub", imp.Lossy, "would be --foo-bar, the name of the inherited flag --foo-bar")
+}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	imp "github.com/go-rotini/import"
 	"github.com/go-rotini/import/internal/corpustest"
 )
 
@@ -24,6 +25,30 @@ func TestCorpus(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			corpustest.Check(t, tc.name, tc.fixture, ".", testFile(tc.root, tc.options))
+		})
+	}
+}
+
+// The network corpus imports real programs downloaded at a pinned version, so it runs only
+// with ROTINI_IMPORT_NETWORK=1. Their note counts must stay within 10% of the recorded
+// baseline; -update rewrites the notes files the baseline was read from.
+func TestNetworkCorpus(t *testing.T) {
+	corpustest.Network(t)
+	cases := []struct {
+		name, module, pkg, root string
+		baseline                imp.Stats
+	}{
+		{"woodpecker", "go.woodpecker-ci.org/woodpecker/v3@v3.19.1-0.20261012144008-b9573e7f525c", "./cmd/cli", "newApp()", imp.Stats{Commands: 92, Flags: 302, Lossy: 8, Unsupported: 1, Info: 77}},
+		{"gitea", "gitea.dev@v1.28.0-dev.0.20261012161222-0eb0126fa244", "./cmd", "NewMainApp(AppVersion{})", imp.Stats{Commands: 75, Flags: 338, Lossy: 3, Unsupported: 2, Info: 60}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			res, stderr, err := corpustest.Run(t, corpustest.Download(t, tc.module), tc.pkg, testFile(tc.root, ""))
+			if err != nil {
+				t.Fatalf("import failed: %v\n%s", err, stderr)
+			}
+			corpustest.Baseline(t, tc.name, res, tc.baseline)
 		})
 	}
 }

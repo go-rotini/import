@@ -1,7 +1,10 @@
 package walk
 
 import (
+	"errors"
 	"reflect"
+	"runtime"
+	"strings"
 	"testing"
 
 	imp "github.com/go-rotini/import"
@@ -23,7 +26,14 @@ func TestParseUse(t *testing.T) {
 		{"trace [trace directory]", []UseArg{{Name: "trace", Optional: true}}},
 		{"get [(-o|--output=)json|yaml] (TYPE[.VERSION][.GROUP] [NAME | -l label] | TYPE[.VERSION][.GROUP]/NAME ...) [flags]",
 			[]UseArg{{Name: "type", Variadic: true}}},
-		{"describe (-f FILENAME | TYPE [NAME_PREFIX | -l label] | TYPE/NAME)", nil},
+		{"describe (-f FILENAME | TYPE [NAME_PREFIX | -l label] | TYPE/NAME)", []UseArg{{Name: "type", Optional: true, Choice: true}}},
+		{"pick {<number> | <url>}", []UseArg{{Name: "number"}}},
+		{"show <repo-id|repo-full-name> [pipeline]", []UseArg{{Name: "repo_id"}, {Name: "pipeline", Optional: true}}},
+		{"annotate (-f FILENAME | TYPE NAME) KEY_1=VAL_1 ... KEY_N=VAL_N", []UseArg{{Name: "type", Optional: true, Choice: true}, {Name: "key_1", Variadic: true}}},
+		{"cat FILE1 ... FILEN", []UseArg{{Name: "file1", Variadic: true}}},
+		{"cp SRC ... DST", []UseArg{{Name: "src", Variadic: true}, {Name: "dst"}}},
+		{"logs [-f] [-p] (POD | TYPE/NAME)", []UseArg{{Name: "pod"}}},
+		{"x [-o json|yaml] <a>", []UseArg{{Name: "a"}}},
 		{"set-context [NAME | --current] [--cluster=cluster_nickname]", []UseArg{{Name: "name", Optional: true}}},
 		{"port-forward TYPE/NAME [options] [LOCAL_PORT:]REMOTE_PORT [...[LOCAL_PORT_N:]REMOTE_PORT_N]",
 			[]UseArg{{Name: "type"}, {Name: "local_port"}, {Name: "local_port_n", Optional: true, Variadic: true}}},
@@ -125,7 +135,7 @@ func TestSmallHelpers(t *testing.T) {
 	if JoinPath("", "a") != "a" || JoinPath("a", "b") != "a b" {
 		t.Error("JoinPath")
 	}
-	if got := SplitExamples("  a \n\n b"); !reflect.DeepEqual(got, []string{"a", "b"}) {
+	if got, _ := SplitExamples("  a \n\n b"); !reflect.DeepEqual(got, []string{"a", "b"}) {
 		t.Errorf("SplitExamples = %q", got)
 	}
 	if s := Source("x", "example.com/none"); s.Framework != "x" || s.Version != "" {
@@ -133,5 +143,255 @@ func TestSmallHelpers(t *testing.T) {
 	}
 	if DependsOn("example.com/none") {
 		t.Error("DependsOn a module that is not linked")
+	}
+}
+
+func TestSplitExamplesJoinsCommands(t *testing.T) {
+	block := "  # create one\n  app create \\\n    --name x\n" +
+		"  app api graphql -f query='\n    query { viewer }\n  '\n" +
+		"  app say \"two\n  lines\"\n" +
+		"  Don't run this as root\n  app run\n"
+	ex, comments := SplitExamples(block)
+	want := []string{
+		"app create \\\n--name x",
+		"app api graphql -f query='\nquery { viewer }\n'",
+		"app say \"two\nlines\"",
+		"Don't run this as root",
+		"app run",
+	}
+	if !reflect.DeepEqual(ex, want) {
+		t.Errorf("examples %q, want %q", ex, want)
+	}
+	if !reflect.DeepEqual(comments, []string{"create one"}) {
+		t.Errorf("comments %q", comments)
+	}
+	// Two apostrophes in prose do not pair up into a quote across lines.
+	ex, _ = SplitExamples("app say don't\napp ls\napp say won't\napp x --m=\"a\nb\"")
+	if want := []string{"app say don't", "app ls", "app say won't", "app x --m=\"a\nb\""}; !reflect.DeepEqual(ex, want) {
+		t.Errorf("examples %q, want %q", ex, want)
+	}
+}
+
+func TestModulePath(t *testing.T) {
+	t.Setenv("GOMODCACHE", "/cache/mod")
+	cases := map[string]string{
+		"/cache/mod/example.com/x@v1.2.3/cmd.go":           "example.com/x@v1.2.3/cmd.go",
+		"/home/me/repo/pkg/mod/app/x.go":                   "/home/me/repo/pkg/mod/app/x.go",
+		"/other/go/pkg/mod/example.com/y@v0.1.0/y.go":      "example.com/y@v0.1.0/y.go",
+		"/home/me/repo/pkg/mod/example.com/z@v1/z.go":      "example.com/z@v1/z.go",
+		"/home/me/repo/cmd/main.go":                        "/home/me/repo/cmd/main.go",
+		"/home/me/pkg/mod/x/pkg/mod/example.com/q@v1/q.go": "example.com/q@v1/q.go",
+	}
+	for in, want := range cases {
+		if got := ModulePath(in); got != want {
+			t.Errorf("ModulePath(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+type receiver struct{ n int }
+
+func (r *receiver) small() error {
+	if r.n > 0 {
+		return errors.New("set")
+	}
+	return nil
+}
+
+func (r *receiver) empty() error { return nil }
+
+//go:noinline
+func (r *receiver) large() error {
+	for i := range r.n {
+		_ = i
+	}
+	return nil
+}
+
+func TestFuncPosMethodValue(t *testing.T) {
+	r := &receiver{}
+	for _, tc := range []struct {
+		fn   any
+		name string
+	}{
+		{r.small, "github.com/go-rotini/import/internal/walk.(*receiver).small"},
+		{r.large, "github.com/go-rotini/import/internal/walk.(*receiver).large"},
+	} {
+		name, file, line := FuncPos(tc.fn)
+		if name != tc.name || !strings.HasSuffix(file, "walk_test.go") || line == 0 {
+			t.Errorf("FuncPos = %q %q %d, want %q in walk_test.go", name, file, line, tc.name)
+		}
+	}
+	// A method that compiles to nothing leaves no trace to find; it is named, not located.
+	if name, file, line := FuncPos(r.empty); name != "github.com/go-rotini/import/internal/walk.(*receiver).empty" || file != "" || line != 0 {
+		t.Errorf("FuncPos(empty) = %q %q %d", name, file, line)
+	}
+}
+
+func TestMachineScrub(t *testing.T) {
+	m := &Machine{
+		dirs:     []machineDir{{"/home/me/.cache", "the user cache directory", "<cache>"}, {"/home/me", "the home directory", "~"}},
+		hosts:    []string{"buildbox"},
+		testName: "app.test",
+		name:     "app",
+	}
+	root := &imp.Command{
+		Name:        "app",
+		Description: "Run `eval \"$(app.test completion bash)\"`; app.tests stays.",
+		Flags: []*imp.Flag{
+			{Name: "config", Schema: &imp.Schema{Type: "string", Default: "/home/me/.config/app.yaml"}},
+			{Name: "cache", Schema: &imp.Schema{Type: "[]string", Default: []any{"/tmp", "/home/me/.cache/app"}}},
+			{Name: "host", Schema: &imp.Schema{Type: "string", Default: "buildbox"}},
+			{Name: "homes", Schema: &imp.Schema{Type: "string", Default: "/home/meal"}},
+			{Name: "prog", Summary: "see app.test help", Schema: &imp.Schema{Type: "string", Default: "app.test"}},
+		},
+	}
+	var notes []string
+	m.Scrub(root, "app", func(path string, level imp.Level, msg string) {
+		notes = append(notes, string(level)+" "+path+": "+msg)
+	})
+	if want := "Run `eval \"$(app completion bash)\"`; app.tests stays."; root.Description != want {
+		t.Errorf("description %q", root.Description)
+	}
+	for _, f := range root.Flags[:3] {
+		if f.Schema.Default != nil {
+			t.Errorf("--%s kept the default %v", f.Name, f.Schema.Default)
+		}
+	}
+	if root.Flags[3].Schema.Default != "/home/meal" {
+		t.Errorf("--homes default %v", root.Flags[3].Schema.Default)
+	}
+	if root.Flags[4].Schema.Default != "app" || root.Flags[4].Summary != "see app help" {
+		t.Errorf("--prog %q %v", root.Flags[4].Summary, root.Flags[4].Schema.Default)
+	}
+	joined := strings.Join(notes, "\n")
+	for _, want := range []string{
+		`--config: the default "~/.config/app.yaml" holds the home directory`,
+		"--cache: the default \"[/tmp <cache>/app]\" holds the user cache directory",
+		"--host: the default \"<host>\" holds the host name",
+		`the test binary's name "app.test"`,
+	} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("no note containing %q in:\n%s", want, joined)
+		}
+	}
+	if len(notes) != 4 {
+		t.Errorf("%d notes:\n%s", len(notes), joined)
+	}
+}
+
+func TestHostNames(t *testing.T) {
+	for host, want := range map[string][]string{
+		"localhost":                       nil,
+		"localhost.localdomain":           nil,
+		"ubuntu":                          nil,
+		"server":                          nil,
+		"ubuntu.example.com":              {"ubuntu.example.com"},
+		"ip-10-0-0-7.ec2.internal":        {"ip-10-0-0-7.ec2.internal", "ip-10-0-0-7"},
+		"Matts-MacBook-Pro.local":         {"Matts-MacBook-Pro.local", "Matts-MacBook-Pro"},
+		"buildbox7":                       {"buildbox7"},
+		"box.example.com":                 {"box.example.com"},
+		"localhost.localdomain.something": nil,
+	} {
+		if got := hostNames(host); !reflect.DeepEqual(got, want) {
+			t.Errorf("hostNames(%q) = %q, want %q", host, got, want)
+		}
+	}
+	m := &Machine{hosts: hostNames("localhost.localdomain")}
+	for _, s := range []string{"localhost:8080", "http://localhost:9090/metrics"} {
+		if w := m.find(s); w != "" {
+			t.Errorf("find(%q) = %q", s, w)
+		}
+	}
+	m = &Machine{hosts: hostNames("ubuntu")}
+	if w := m.find("ubuntu:22.04"); w != "" {
+		t.Errorf("find(ubuntu:22.04) = %q", w)
+	}
+}
+
+func TestMachineSharedTemp(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TMPDIR does not set the temporary directory on Windows")
+	}
+	t.Setenv("TMPDIR", "/tmp")
+	if w := NewMachine("app").find("/tmp/app"); w != "" {
+		t.Errorf("/tmp/app with TMPDIR=/tmp: %q", w)
+	}
+	t.Setenv("TMPDIR", "/var/folders/xy/T")
+	if w := NewMachine("app").find("/var/folders/xy/T/app"); w != "the temporary directory" {
+		t.Errorf("a per-user temporary directory: %q", w)
+	}
+}
+
+func TestMachineScrubHelpText(t *testing.T) {
+	m := &Machine{
+		dirs:  []machineDir{{"/home/me", "the home directory", "~"}},
+		hosts: []string{"buildbox-7"},
+		name:  "app",
+	}
+	sub := &imp.Command{Name: "sub", Summary: "plain"}
+	root := &imp.Command{
+		Name:        "app",
+		Summary:     "reads /home/me/.app",
+		Description: "runs on buildbox-7; /home/meal stays",
+		Examples:    []string{"app --config /home/me/x.yaml"},
+		Flags: []*imp.Flag{
+			{Name: "config", Summary: "config file (default /home/me/.app.yaml)", Schema: &imp.Schema{Type: "string", ImplicitValue: "/home/me/.app.yaml"}},
+			{Name: "mode", Schema: &imp.Schema{Type: "string", ImplicitValue: "fast", Enum: []imp.EnumValue{{Value: "a", Summary: "uses /home/me/a"}}}},
+		},
+		Arguments: []*imp.Argument{{Name: "dir", Summary: "under /home/me", Schema: &imp.Schema{Type: "string"}}},
+		Commands:  []*imp.Command{sub},
+	}
+	var notes []string
+	m.Scrub(root, "app", func(path string, level imp.Level, msg string) {
+		notes = append(notes, string(level)+" "+path+": "+msg)
+	})
+	for _, tc := range [][2]string{
+		{root.Summary, "reads ~/.app"},
+		{root.Description, "runs on <host>; /home/meal stays"},
+		{root.Examples[0], "app --config ~/x.yaml"},
+		{root.Flags[0].Summary, "config file (default ~/.app.yaml)"},
+		{root.Flags[1].Schema.Enum[0].Summary, "uses ~/a"},
+		{root.Arguments[0].Summary, "under ~"},
+		{root.Flags[1].Schema.ImplicitValue, "fast"},
+		{root.Flags[0].Schema.ImplicitValue, ""},
+	} {
+		if tc[0] != tc[1] {
+			t.Errorf("got %q, want %q", tc[0], tc[1])
+		}
+	}
+	want := []string{
+		`lossy app: --config: the value "~/.app.yaml" it takes when given alone holds the home directory of the machine the import ran on, so it was dropped and the flag needs a value; set it in the handler`,
+		`lossy app: help text held the home directory and the host name of the machine the import ran on; it was written as "~" and "<host>"`,
+	}
+	if !reflect.DeepEqual(notes, want) {
+		t.Errorf("notes:\n%s", strings.Join(notes, "\n"))
+	}
+}
+
+func TestNamesRename(t *testing.T) {
+	n := Names{}
+	for _, tc := range []struct{ in, name, why string }{
+		{"foo.bar", "foo-bar", "is not a valid rotini name"},
+		{"foo-bar", "foo-bar-2", `is "foo-bar" once made a valid rotini name, which another already has`},
+		{"x", "x", ""},
+	} {
+		if name, why := n.Rename(tc.in); name != tc.name || why != tc.why {
+			t.Errorf("Rename(%q) = %q, %q", tc.in, name, why)
+		}
+	}
+}
+
+func TestSharedHooks(t *testing.T) {
+	hooks := []imp.Hook{
+		{Path: "a x", Framework: "RunE", Func: "example.com/x.Wrap.func1"},
+		{Path: "a y", Framework: "RunE", Func: "example.com/x.Wrap.func1"},
+		{Path: "a z", Framework: "RunE", Func: "example.com/x.run"},
+		{Path: "a w", Framework: "RunE", Func: "example.com/x.run"},
+		{Path: "a v", Framework: "PreRunE", Func: "example.com/x.Wrap.func1"},
+	}
+	got := SharedHooks(hooks)
+	if len(got) != 1 || !strings.Contains(got[0], "example.com/x.Wrap.func1 is the RunE of 2 commands") {
+		t.Fatalf("SharedHooks = %q", got)
 	}
 }

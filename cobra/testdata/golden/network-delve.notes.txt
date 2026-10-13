@@ -28,4 +28,5 @@
 [info] dlv version: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
 [info] dlv: Cobra prints help for a command with sub-commands and no Run; rotini runs that command's handler, so make it print help
 [info] dlv: commands are imported in Cobra's alphabetical order; rotini lists them in the order the spec declares them
-imported 17 commands, 42 flags: 13 lossy, 0 unsupported, 17 info
+[info] dlv: flags and commands added inside a hook (PersistentPreRun, PreRun, Run), an OnInitialize function or a plugin loader are not in the walked tree and were not imported
+imported 17 commands, 42 flags: 13 lossy, 0 unsupported, 18 info

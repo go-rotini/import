@@ -65,8 +65,6 @@ func TestWriteRead(t *testing.T) {
 	}
 	want := sample()
 	want.Format = imp.Format
-	// uint64 beyond int64 decodes as float64.
-	want.Command.Flags[4].Schema.Default = float64(18446744073709551615)
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("round trip differs:\n got %#v\nwant %#v", got.Command.Flags, want.Command.Flags)
 	}

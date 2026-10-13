@@ -12,8 +12,8 @@ func (im *importer) arguments(c *cli.Command, path string, hasSubs bool) []*imp.
 	if len(c.Arguments) > 0 {
 		return im.declared(c, path)
 	}
-	if hasSubs {
-		return nil
+	if hasSubs && (c.Action == nil || isCLIFunc(c.Action)) {
+		return nil // urfave/cli shows help for words that name no sub-command
 	}
 	return im.fromUsage(c, path)
 }
@@ -88,7 +88,7 @@ func (im *importer) fromUsage(c *cli.Command, path string) []*imp.Argument {
 	declared := walk.ParseArgsUsage(c.ArgsUsage)
 	var out []*imp.Argument
 	variadic := false
-	for _, d := range declared {
+	for i, d := range declared {
 		s := &imp.Schema{Type: "string", Required: !d.Optional}
 		if d.Variadic {
 			s.Type, variadic = "[]string", true
@@ -98,7 +98,13 @@ func (im *importer) fromUsage(c *cli.Command, path string) []*imp.Argument {
 			}
 		}
 		out = append(out, &imp.Argument{Name: d.Name, Schema: s})
+		if d.Choice {
+			im.notef(path, imp.Lossy, "<%s> stands for a choice of alternatives in %q: any one of them fills it, so it was made optional; the handler must tell them apart", d.Name, c.ArgsUsage)
+		}
 		if variadic {
+			if rest := declared[i+1:]; len(rest) > 0 {
+				im.notef(path, imp.Lossy, "%s after the variadic <%s> in %q dropped: a variadic argument is the last; the handler must take them from its end", walk.UseNames(rest), d.Name, c.ArgsUsage)
+			}
 			break
 		}
 	}

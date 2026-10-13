@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -812,4 +814,213 @@ func TestGoFlagSet(t *testing.T) {
 	if s := flagNamed(t, res.Command, "wait").Schema; s.Type != "duration" || s.Default != "1s" {
 		t.Fatalf("wait %+v", s)
 	}
+}
+
+func TestArgsBoundBeyondProbeLimit(t *testing.T) {
+	root := &cobra.Command{Use: "app"}
+	root.AddCommand(
+		&cobra.Command{Use: "max10 <a>", Args: cobra.MaximumNArgs(10), Run: run},
+		&cobra.Command{Use: "exact8", Args: cobra.ExactArgs(8), Run: run},
+		&cobra.Command{Use: "exact9", Args: cobra.ExactArgs(9), Run: run},
+		&cobra.Command{Use: "range", Args: cobra.RangeArgs(2, 9), Run: run},
+		&cobra.Command{Use: "huge", Args: cobra.MaximumNArgs(5000), Run: run},
+	)
+	res := importTree(t, root, cobraimport.Options{})
+	bounds := func(path string) string {
+		var parts []string
+		for _, a := range find(t, res, path).Arguments {
+			s := a.Name + ":" + a.Schema.Type
+			if a.Schema.MinItems != nil {
+				s += fmt.Sprintf(" min %d", *a.Schema.MinItems)
+			}
+			if a.Schema.MaxItems != nil {
+				s += fmt.Sprintf(" max %d", *a.Schema.MaxItems)
+			}
+			parts = append(parts, s)
+		}
+		return strings.Join(parts, ", ")
+	}
+	cases := map[string]string{
+		"app max10":  "a:[]string max 10",
+		"app exact8": "arg1:string, arg2:string, arg3:string, arg4:string, arg5:string, arg6:string, arg7:string, arg8:string",
+		"app exact9": "args:[]string min 9 max 9",
+		"app range":  "args:[]string min 2 max 9",
+		"app huge":   "args:[]string",
+	}
+	for path, want := range cases {
+		if got := bounds(path); got != want {
+			t.Errorf("%s: %q, want %q", path, got, want)
+		}
+	}
+}
+
+func TestStringDefaultsThatLookZero(t *testing.T) {
+	root := &cobra.Command{Use: "app", Run: run}
+	root.Flags().String("request-timeout", "0", "")
+	root.Flags().String("color", "false", "")
+	root.Flags().String("list", "[]", "")
+	root.Flags().String("none", "", "")
+	root.Flags().Int("n", 0, "")
+	root.Flags().Bool("b", false, "")
+	res := importTree(t, root, cobraimport.Options{})
+	for name, want := range map[string]any{"request-timeout": "0", "color": "false", "list": "[]", "none": nil, "n": nil, "b": nil} {
+		if got := flagNamed(t, res.Command, name).Schema.Default; got != want {
+			t.Errorf("--%s default %#v, want %#v", name, got, want)
+		}
+	}
+}
+
+type methodOpts struct{ fail bool }
+
+func (o *methodOpts) run(*cobra.Command, []string) error {
+	if o.fail {
+		return errors.New("failed")
+	}
+	return nil
+}
+
+func TestMethodValueHook(t *testing.T) {
+	o := &methodOpts{}
+	root := &cobra.Command{Use: "app", RunE: o.run}
+	res := importTree(t, root, cobraimport.Options{})
+	h := res.Hooks[0]
+	if h.Func != "github.com/go-rotini/import/cobra_test.(*methodOpts).run" || !strings.HasSuffix(h.File, "cobra_test.go") || h.Line == 0 {
+		t.Fatalf("hook %+v", h)
+	}
+}
+
+func TestUseChoicesAndTrailingPlaceholders(t *testing.T) {
+	root := &cobra.Command{Use: "app"}
+	root.AddCommand(
+		&cobra.Command{Use: "cp <src>... <dst>", Run: run},
+		&cobra.Command{Use: "mv SRC ... DST", Run: run},
+		&cobra.Command{Use: "pick {<number> | <url>}", Run: run},
+		&cobra.Command{Use: "annotate (-f FILENAME | TYPE NAME) KEY_1=VAL_1 ... KEY_N=VAL_N", Run: run},
+	)
+	res := importTree(t, root, cobraimport.Options{})
+	cases := map[string]string{
+		"app cp":       "src:[]string!>=1",
+		"app mv":       "src:[]string!>=1",
+		"app pick":     "number:string! args:[]string",
+		"app annotate": "type:string key_1:[]string",
+	}
+	for path, want := range cases {
+		if got := argSummary(find(t, res, path)); got != want {
+			t.Errorf("%s: %q, want %q", path, got, want)
+		}
+	}
+	wantNote(t, res, "app cp", imp.Lossy, "<dst> after the variadic <src>")
+	wantNote(t, res, "app mv", imp.Lossy, "<dst> after the variadic <src>")
+	noNote(t, res, "app pick", "stands for a choice")
+	wantNote(t, res, "app annotate", imp.Lossy, "<type> stands for a choice of alternatives")
+	// The required key_1 follows the optional choice, so it is optional too.
+	wantNote(t, res, "app annotate", imp.Lossy, "<key_1> is required after an optional placeholder")
+}
+
+func TestNamesThatCollideOnceValid(t *testing.T) {
+	root := &cobra.Command{Use: "app", Run: run}
+	root.Flags().String("foo.bar", "", "")
+	root.Flags().String("foo-bar", "", "")
+	root.AddCommand(&cobra.Command{Use: "a.b", Run: run}, &cobra.Command{Use: "a-b", Run: run})
+	res := importTree(t, root, cobraimport.Options{})
+	var flags, cmds []string
+	for _, f := range res.Command.Flags {
+		flags = append(flags, strings.Join(f.Identifiers, "/"))
+	}
+	for _, c := range res.Command.Commands {
+		cmds = append(cmds, c.Name)
+	}
+	if want := []string{"-h/--help", "--foo-bar", "--foo-bar-2"}; !reflect.DeepEqual(flags, want) {
+		t.Fatalf("flags %v", flags)
+	}
+	if len(cmds) < 2 || cmds[0] == cmds[1] {
+		t.Fatalf("commands %v", cmds)
+	}
+	if len(notesFor(res, "app", "which another already has")) != 1 || len(notesFor(res, "app a-b-2", "which another already has"))+len(notesFor(res, "app a-b", "which another already has")) != 1 {
+		t.Fatalf("collision notes:\n%s", dumpNotes(res))
+	}
+}
+
+func TestGroupThatRunsTakesArguments(t *testing.T) {
+	build := func() *cobra.Command {
+		root := &cobra.Command{Use: "app", Run: run}
+		grp := &cobra.Command{Use: "grp [thing]", Run: run}
+		grp.AddCommand(&cobra.Command{Use: "leaf", Run: run})
+		root.AddCommand(grp)
+		return root
+	}
+	res := importTree(t, build(), cobraimport.Options{})
+	if got := argSummary(find(t, res, "app grp")); got != "thing:string args:[]string" {
+		t.Fatalf("grp %q", got)
+	}
+	if len(res.Command.Arguments) != 0 {
+		t.Fatal("the root with sub-commands took arguments; Cobra rejects them")
+	}
+	strict := importTree(t, build(), cobraimport.Options{Strict: true})
+	if got := argSummary(find(t, strict, "app grp")); got != "thing:string" {
+		t.Fatalf("strict grp %q", got)
+	}
+}
+
+func TestInventedNamesOnly(t *testing.T) {
+	root := &cobra.Command{Use: "app"}
+	root.AddCommand(&cobra.Command{Use: "lint PATH", Args: cobra.MinimumNArgs(1), Run: run})
+	res := importTree(t, root, cobraimport.Options{})
+	wantNote(t, res, "app lint", imp.Lossy, "argument names invented (args):")
+}
+
+func TestLateFlagsNoteWithoutPersistentHook(t *testing.T) {
+	root := &cobra.Command{Use: "app"}
+	root.AddCommand(&cobra.Command{Use: "x", PreRun: run, Run: run})
+	res := importTree(t, root, cobraimport.Options{})
+	wantNote(t, res, "app", imp.Info, "not in the walked tree")
+}
+
+func wrap(fn func(*cobra.Command, []string) error) func(*cobra.Command, []string) error {
+	return func(c *cobra.Command, a []string) error { return fn(c, a) }
+}
+
+func TestSharedWrapperHooks(t *testing.T) {
+	root := &cobra.Command{Use: "app"}
+	root.AddCommand(
+		&cobra.Command{Use: "a", RunE: wrap(func(*cobra.Command, []string) error { return nil })},
+		&cobra.Command{Use: "b", RunE: wrap(func(*cobra.Command, []string) error { return nil })},
+	)
+	res := importTree(t, root, cobraimport.Options{})
+	wantNote(t, res, "app", imp.Info, "cobra_test.wrap.func1 is the RunE of 2 commands")
+}
+
+func TestMachineValues(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	testName := strings.TrimSuffix(filepath.Base(os.Args[0]), ".exe")
+	root := &cobra.Command{Use: "app", Run: run, Long: "Run `" + testName + " completion bash`."}
+	root.Flags().String("config", filepath.Join(home, "app.yaml"), "")
+	res := importTree(t, root, cobraimport.Options{})
+	if got := flagNamed(t, res.Command, "config").Schema.Default; got != nil {
+		t.Errorf("--config default %v", got)
+	}
+	wantNote(t, res, "app", imp.Lossy, `--config: the default "~/app.yaml" holds the home directory`)
+	if strings.HasSuffix(testName, ".test") {
+		if res.Command.Description != "Run `app completion bash`." {
+			t.Errorf("description %q", res.Command.Description)
+		}
+		wantNote(t, res, "app", imp.Info, "the test binary's name")
+	}
+}
+
+func TestRenamedFlagDoesNotShadowInherited(t *testing.T) {
+	root := &cobra.Command{Use: "app", Run: run}
+	root.PersistentFlags().String("foo-bar", "", "")
+	root.PersistentFlags().String("same", "", "")
+	sub := &cobra.Command{Use: "sub", Run: run}
+	sub.Flags().String("foo.bar", "", "")
+	sub.Flags().String("same", "", "")
+	root.AddCommand(sub)
+	res := importTree(t, root, cobraimport.Options{})
+	s := find(t, res, "app sub")
+	flagNamed(t, s, "foo-bar-2")
+	flagNamed(t, s, "same")
+	wantNote(t, res, "app sub", imp.Lossy, "flag --foo.bar would be --foo-bar, the name of the inherited flag --foo-bar; renamed to --foo-bar-2")
 }

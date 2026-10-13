@@ -10,28 +10,64 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// probeLimit is the most positionals an Args validator is probed with. A validator that
-// accepts this many is taken to be unbounded.
+// probeLimit is the most positionals an Args validator is probed with one count at a time.
+// A validator that accepts this many is probed further, up to unboundedProbe.
 const probeLimit = 8
 
+// unboundedProbe is the count a validator that accepts probeLimit positionals is tried with:
+// one that accepts it too is taken to be unbounded.
+const unboundedProbe = 1000
+
 // probe calls the Args validator with 0..probeLimit placeholder arguments and returns the
-// counts it accepts. A validator that checks values against ValidArgs is given ValidArgs[0].
-func probe(c *cobra.Command) []int {
+// counts it accepts. When it accepts probeLimit, most is the largest count beyond it that the
+// validator accepts, found by bisection up to unboundedProbe, or -1 when it accepts
+// unboundedProbe; otherwise most is the last accepted count. A stock validator that accepts
+// none of 0..probeLimit is tried with more, up to unboundedProbe, from the first count it
+// accepts. A validator that checks values against ValidArgs is given ValidArgs[0].
+func probe(c *cobra.Command, stock bool) (accepted []int, most int) {
 	fill := "x"
 	if len(c.ValidArgs) > 0 {
 		fill = strings.SplitN(c.ValidArgs[0], "\t", 2)[0]
 	}
-	var accepted []int
-	for n := 0; n <= probeLimit; n++ {
+	try := func(n int) bool {
 		args := make([]string, n)
 		for i := range args {
 			args[i] = fill
 		}
-		if accepts(c, args) {
+		return accepts(c, args)
+	}
+	for n := 0; n <= probeLimit; n++ {
+		if try(n) {
 			accepted = append(accepted, n)
 		}
 	}
-	return accepted
+	for n := probeLimit + 1; stock && len(accepted) == 0 && n <= unboundedProbe; n++ {
+		if try(n) {
+			accepted = append(accepted, n)
+		}
+	}
+	if len(accepted) == 0 {
+		return nil, 0
+	}
+	most = accepted[len(accepted)-1]
+	if most > probeLimit && !try(most+1) {
+		return accepted, most
+	}
+	if most < probeLimit {
+		return accepted, most
+	}
+	if try(unboundedProbe) {
+		return accepted, -1
+	}
+	lo, hi := most, unboundedProbe // lo is accepted, hi is not
+	for hi-lo > 1 {
+		if mid := (lo + hi) / 2; try(mid) {
+			lo = mid
+		} else {
+			hi = mid
+		}
+	}
+	return accepted, lo
 }
 
 func accepts(c *cobra.Command, args []string) (ok bool) {
@@ -58,8 +94,8 @@ func (im *importer) arguments(c *cobra.Command, path string) []*imp.Argument {
 	}
 	declared := walk.ParseUse(c.Use)
 	if c.Args == nil {
-		if c.HasSubCommands() {
-			return nil
+		if c.HasSubCommands() && !c.HasParent() {
+			return nil // Cobra's legacy check rejects a root's positionals that name no sub-command
 		}
 		return im.fromUse(c, path, declared)
 	}
@@ -68,19 +104,19 @@ func (im *importer) arguments(c *cobra.Command, path string) []*imp.Argument {
 		return nil
 	}
 	enum := validArgs(c)
-	invented := false
 	name := func(i int, variadic bool) string {
-		if i < len(declared) {
+		switch {
+		case i < len(declared):
 			return declared[i].Name
-		}
-		invented = true
-		if variadic {
+		case variadic:
 			return "args"
 		}
 		return fmt.Sprintf("arg%d", i+1)
 	}
+	// A bound beyond probeLimit is a list with a maximum rather than that many scalars.
+	list := hi < 0 || hi > probeLimit
 	scalars := hi
-	if hi < 0 {
+	if list {
 		scalars = lo
 		// Keep the required ones as named scalars only when Use names each of them and the
 		// last is not itself the variadic one.
@@ -96,11 +132,15 @@ func (im *importer) arguments(c *cobra.Command, path string) []*imp.Argument {
 		}
 		out = append(out, &imp.Argument{Name: name(i, false), Schema: s})
 	}
-	if hi < 0 {
+	if list {
 		s := &imp.Schema{Type: "[]string"}
 		if rest := lo - scalars; rest > 0 {
 			s.Required = true
 			s.MinItems = &rest
+		}
+		if hi > 0 {
+			most := hi - scalars
+			s.MaxItems = &most
 		}
 		if scalars == 0 && enum != nil {
 			s.Items = &imp.Schema{Type: "string", Enum: enum}
@@ -111,16 +151,16 @@ func (im *importer) arguments(c *cobra.Command, path string) []*imp.Argument {
 	if enum != nil && len(out) > 1 {
 		im.notef(path, imp.Lossy, "ValidArgs became the enum of the first argument only")
 	}
-	if invented {
-		im.notef(path, imp.Lossy, "argument names invented (%s): the Use line %q does not name them", argNames(out), c.Use)
+	if len(out) > len(declared) {
+		im.notef(path, imp.Lossy, "argument names invented (%s): the Use line %q does not name them", argNames(out[len(declared):]), c.Use)
 	}
 	return out
 }
 
 // counts finds how many positionals the Args validator accepts. hi is -1 when unbounded.
 func (im *importer) counts(c *cobra.Command, path string) (lo, hi int) {
-	acc := probe(c)
 	stock := isCobraFunc(c.Args)
+	acc, most := probe(c, stock)
 	switch {
 	case len(acc) == 0:
 		im.notef(path, imp.Lossy, "Args validator %s accepted none of the probes; imported as any number of arguments, move its checks to the handler", walk.FuncName(c.Args))
@@ -129,10 +169,7 @@ func (im *importer) counts(c *cobra.Command, path string) (lo, hi int) {
 		im.notef(path, imp.Unsupported, "Args validator %s accepts %v positionals, not a range; imported as any number, move the check to the handler", walk.FuncName(c.Args), acc)
 		return 0, -1
 	}
-	lo, hi = acc[0], acc[len(acc)-1]
-	if hi == probeLimit {
-		hi = -1
-	}
+	lo, hi = acc[0], most
 	if !stock {
 		im.notef(path, imp.Lossy, "custom Args validator %s: the count %d..%s was found by probing; move any value checks to the handler", walk.FuncName(c.Args), lo, bound(hi))
 	}
@@ -163,7 +200,13 @@ func (im *importer) fromUse(c *cobra.Command, path string, declared []walk.UseAr
 			}
 		}
 		out = append(out, &imp.Argument{Name: d.Name, Schema: s})
+		if d.Choice {
+			im.notef(path, imp.Lossy, "<%s> stands for a choice of alternatives in %q: any one of them fills it, so it was made optional; the handler must tell them apart", d.Name, c.Use)
+		}
 		if variadic {
+			if rest := declared[i+1:]; len(rest) > 0 {
+				im.notef(path, imp.Lossy, "%s after the variadic <%s> in %q dropped: a variadic argument is the last; the handler must take them from its end", walk.UseNames(rest), d.Name, c.Use)
+			}
 			break
 		}
 	}

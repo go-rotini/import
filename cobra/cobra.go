@@ -25,6 +25,10 @@ type importer struct {
 	notes       []imp.Note
 	hooks       []imp.Hook
 	groupsNoted map[groupKey]bool
+	// inherited maps the imported names of the cascading flags the command being walked
+	// inherits to their pflag names; orig holds each imported flag's pflag name.
+	inherited map[string]string
+	orig      map[*imp.Flag]string
 	// facts gathered for the once-per-import notes
 	deprecations     bool
 	groupNoRun       bool
@@ -49,10 +53,14 @@ func FromCobra(cmd *cobra.Command, opts Options) (res *imp.Result, err error) {
 		}
 	}()
 	root := cmd.Root()
-	im := &importer{opts: opts, groupsNoted: map[groupKey]bool{}}
+	im := &importer{opts: opts, groupsNoted: map[groupKey]bool{}, orig: map[*imp.Flag]string{}}
 	im.addDefaults(root)
-	rc := im.command(root, "")
-	im.programNotes(root)
+	rootName := walk.CommandName(root.Name())
+	if rootName != root.Name() {
+		im.notef(rootName, imp.Lossy, "command name %q is not a valid rotini name; renamed to %q", root.Name(), rootName)
+	}
+	rc := im.command(root, rootName, "")
+	im.programNotes(root, rc)
 	return &imp.Result{
 		Source:  walk.Source("cobra", cobraModule),
 		Command: rc,
@@ -99,24 +107,20 @@ func (im *importer) notef(path string, level imp.Level, format string, a ...any)
 	im.notes = append(im.notes, imp.Note{Path: path, Level: level, Msg: fmt.Sprintf(format, a...)})
 }
 
-func (im *importer) command(c *cobra.Command, parent string) *imp.Command {
+func (im *importer) command(c *cobra.Command, name, parent string) *imp.Command {
 	isRoot := !c.HasParent()
-	name := walk.CommandName(c.Name())
 	path := walk.JoinPath(parent, name)
-	if name != c.Name() {
-		im.notef(path, imp.Lossy, "command name %q is not a valid rotini name; renamed to %q", c.Name(), name)
-	}
 	rc := &imp.Command{
 		Name:        name,
 		Summary:     strings.TrimSpace(c.Short),
 		Description: strings.TrimSpace(c.Long),
-		Examples:    walk.SplitExamples(c.Example),
 		Hidden:      c.Hidden,
 		Deprecated:  c.Deprecated,
 	}
 	if rc.Description == rc.Summary {
 		rc.Description = ""
 	}
+	im.examples(rc, path, c.Example)
 	if rc.Deprecated != "" {
 		im.deprecations = true
 	}
@@ -147,6 +151,18 @@ func (im *importer) command(c *cobra.Command, parent string) *imp.Command {
 		im.groupNoRun = true
 	}
 
+	inherited := im.inherited
+	im.inherited = walk.Cascade(inherited, rc.Flags, im.orig)
+	defer func() { im.inherited = inherited }()
+	names := walk.Names{}
+	for _, sub := range c.Commands() {
+		switch {
+		case isDefaultHelpCmd(sub):
+			names["help"] = true
+		case isDefaultCompletionCmd(sub):
+			names["completion"] = true
+		}
+	}
 	for _, sub := range c.Commands() {
 		switch {
 		case strings.HasPrefix(sub.Name(), "__complete"):
@@ -156,10 +172,31 @@ func (im *importer) command(c *cobra.Command, parent string) *imp.Command {
 		case isDefaultCompletionCmd(sub):
 			rc.Commands = append(rc.Commands, im.completionCommand(c, sub, path))
 		default:
-			rc.Commands = append(rc.Commands, im.command(sub, path))
+			subName := im.subName(path, sub.Name(), names)
+			rc.Commands = append(rc.Commands, im.command(sub, subName, path))
 		}
 	}
 	return rc
+}
+
+// subName names a sub-command: its own name made valid, with a numeric suffix when that
+// is another sub-command's.
+func (im *importer) subName(parent, orig string, names walk.Names) string {
+	name, why := names.Rename(orig)
+	if why != "" {
+		im.notef(walk.JoinPath(parent, name), imp.Lossy, "command name %q %s; renamed to %q", orig, why, name)
+	}
+	return name
+}
+
+// examples sets the command's examples from its Example block, folding the block's comment
+// lines into one note.
+func (im *importer) examples(rc *imp.Command, path, block string) {
+	var comments []string
+	rc.Examples, comments = walk.SplitExamples(block)
+	if len(comments) > 0 {
+		im.notef(path, imp.Lossy, "comment lines in the examples dropped, since a rotini example is a command line only: %q", comments)
+	}
 }
 
 func (im *importer) aliases(c *cobra.Command, path string) []string {
@@ -274,8 +311,12 @@ func (im *importer) optionsFirst(path string, rc *imp.Command) {
 }
 
 // programNotes adds the notes that concern the whole import, once each.
-func (im *importer) programNotes(root *cobra.Command) {
-	path := walk.CommandName(root.Name())
+func (im *importer) programNotes(root *cobra.Command, rc *imp.Command) {
+	path := rc.Name
+	walk.NewMachine(path).Scrub(rc, path, func(p string, level imp.Level, msg string) { im.notef(p, level, "%s", msg) })
+	for _, msg := range walk.SharedHooks(im.hooks) {
+		im.notef(path, imp.Info, "%s", msg)
+	}
 	if im.deprecations {
 		im.notef(path, imp.Info, "Cobra prints deprecation warnings itself; in rotini a hook reads rotini.Deprecations and prints them")
 	}
@@ -291,8 +332,8 @@ func (im *importer) programNotes(root *cobra.Command) {
 	if cobra.EnableCommandSorting {
 		im.notef(path, imp.Info, "commands are imported in Cobra's alphabetical order; rotini lists them in the order the spec declares them")
 	}
-	if root.PersistentPreRun != nil || root.PersistentPreRunE != nil {
-		im.notef(path, imp.Info, "flags and commands added inside PersistentPreRun, Run, an OnInitialize function or a plugin loader are not in the walked tree and were not imported")
+	if len(im.hooks) > 0 {
+		im.notef(path, imp.Info, "flags and commands added inside a hook (PersistentPreRun, PreRun, Run), an OnInitialize function or a plugin loader are not in the walked tree and were not imported")
 	}
 	if !hasFlagCompletionLookup(root) {
 		im.notef(path, imp.Info, "this Cobra version does not expose flag completion functions; any registered ones were not detected")

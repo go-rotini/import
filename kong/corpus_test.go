@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	imp "github.com/go-rotini/import"
 	"github.com/go-rotini/import/internal/corpustest"
 )
 
@@ -23,6 +24,30 @@ func TestCorpus(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			corpustest.Check(t, tc.name, tc.fixture, ".", testFile(tc.grammar, tc.options))
+		})
+	}
+}
+
+// The network corpus imports real programs downloaded at a pinned version, so it runs only
+// with ROTINI_IMPORT_NETWORK=1. Their note counts must stay within 10% of the recorded
+// baseline; -update rewrites the notes files the baseline was read from. git-spice builds
+// against a fork of Kong that allows negatable on bool-like values that are not bools.
+func TestNetworkCorpus(t *testing.T) {
+	corpustest.Network(t)
+	cases := []struct {
+		name, module, pkg, grammar, options string
+		baseline                            imp.Stats
+	}{
+		{"git-spice", "go.abhg.dev/gs@v0.31.3-0.20261001180930-c5274c7df6e6", ".", "&mainCmd{}", `Name: "gs"`, imp.Stats{Commands: 74, Flags: 302, Lossy: 71, Unsupported: 11, Info: 3}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			res, stderr, err := corpustest.Run(t, corpustest.Download(t, tc.module), tc.pkg, testFile(tc.grammar, tc.options))
+			if err != nil {
+				t.Fatalf("import failed: %v\n%s", err, stderr)
+			}
+			corpustest.Baseline(t, tc.name, res, tc.baseline)
 		})
 	}
 }

@@ -199,6 +199,11 @@
     },
     {
       "path": "acmecli",
+      "level": "info",
+      "msg": "flags and commands added inside a hook (PersistentPreRun, PreRun, Run), an OnInitialize function or a plugin loader are not in the walked tree and were not imported"
+    },
+    {
+      "path": "acmecli",
       "level": "lossy",
       "msg": "viper is linked in: its bindings (BindPFlag, AutomaticEnv, SetEnvPrefix, config paths) were not imported; declare variable: and key: on inputs, env_prefix and config_files by hand"
     }

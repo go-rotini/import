@@ -1,0 +1,86 @@
+[lossy] gs: --version runs go.abhg.dev/gs.versionFlag.BeforeReset when it is given: port it to the PreRun hook, checking the flag
+[lossy] gs: --dir is a kong.ChangeDirFlag, which changes the working directory before the run: join paths to it in the handler
+[lossy] gs: --prompt: its default comes from a Kong variable that was not supplied, so it was dropped
+[lossy] gs: --secret-backend has the custom type main.secretBackend: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs repo sync: --restack has the custom type spice.RestackMode: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs repo sync: --closed-changes has the custom type sync.ClosedChanges: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs log short: --change-format has the custom type main.changeFormat: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs log short: --change-format-short has the custom type *main.changeFormat: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs log short: --change-format-long has the custom type *main.changeFormat: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs log short: --push-status-format has the custom type main.pushStatusFormat: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs log long: --change-format has the custom type main.changeFormat: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs log long: --change-format-short has the custom type *main.changeFormat: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs log long: --change-format-long has the custom type *main.changeFormat: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs log long: --push-status-format has the custom type main.pushStatusFormat: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs stack submit: --web has the custom type submit.OpenWeb: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs stack submit: --nav-comment has the custom type submit.NavCommentWhen: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs stack submit: --nav-comment-sync has the custom type submit.NavCommentSync: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs stack submit: --nav-comment-downstack has the custom type submit.NavCommentDownstack: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs stack submit: --nav-comment-trunk-link has the custom type submit.NavCommentTrunkLink: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs stack submit: --skip-restack-check has the custom type submit.SkipRestackCheck: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs stack submit: --labels-add-when has the custom type submit.LabelsAddWhen: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs stack submit: --reviewers-add-when has the custom type submit.ReviewersAddWhen: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs stack merge: --method has the custom type forge.MergeMethod: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs upstack submit: --web has the custom type submit.OpenWeb: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs upstack submit: --nav-comment has the custom type submit.NavCommentWhen: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs upstack submit: --nav-comment-sync has the custom type submit.NavCommentSync: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs upstack submit: --nav-comment-downstack has the custom type submit.NavCommentDownstack: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs upstack submit: --nav-comment-trunk-link has the custom type submit.NavCommentTrunkLink: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs upstack submit: --skip-restack-check has the custom type submit.SkipRestackCheck: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs upstack submit: --labels-add-when has the custom type submit.LabelsAddWhen: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs upstack submit: --reviewers-add-when has the custom type submit.ReviewersAddWhen: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs downstack submit: --web has the custom type submit.OpenWeb: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs downstack submit: --nav-comment has the custom type submit.NavCommentWhen: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs downstack submit: --nav-comment-sync has the custom type submit.NavCommentSync: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs downstack submit: --nav-comment-downstack has the custom type submit.NavCommentDownstack: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs downstack submit: --nav-comment-trunk-link has the custom type submit.NavCommentTrunkLink: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs downstack submit: --skip-restack-check has the custom type submit.SkipRestackCheck: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs downstack submit: --labels-add-when has the custom type submit.LabelsAddWhen: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs downstack submit: --reviewers-add-when has the custom type submit.ReviewersAddWhen: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs downstack merge: --method has the custom type forge.MergeMethod: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs branch checkout: --track-untracked has the custom type main.trackUntracked: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[unsupported] gs branch checkout: xor group "detach-or-dry-run" spans flags of more than one command: a rotini group names flags of one command, so it was dropped
+[lossy] gs branch create: --restack has the custom type spice.AutoRestackMode: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs branch create: --restack is negatable but its type is string, and a rotini negatable flag is a bool: --no-restack was imported as a bool flag of its own; when it is given, set --restack to its negated value in the handler
+[unsupported] gs branch create: xor group "commit-message-source" spans flags of more than one command: a rotini group names flags of one command, so it was dropped
+[lossy] gs branch delete: --restack has the custom type spice.RestackMode: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs branch split: --at has the custom type split.Point: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs branch squash: --restack has the custom type spice.AutoRestackMode: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs branch squash: --restack is negatable but its type is string, and a rotini negatable flag is a bool: --no-restack was imported as a bool flag of its own; when it is given, set --restack to its negated value in the handler
+[unsupported] gs branch squash: xor group "commit-message-source" spans flags of more than one command: a rotini group names flags of one command, so it was dropped
+[lossy] gs branch edit: --restack has the custom type spice.AutoRestackMode: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs branch edit: --restack is negatable but its type is string, and a rotini negatable flag is a bool: --no-restack was imported as a bool flag of its own; when it is given, set --restack to its negated value in the handler
+[lossy] gs branch onto: --restack has the custom type spice.RestackMode: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs branch merge: --method has the custom type forge.MergeMethod: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs branch submit: --web has the custom type submit.OpenWeb: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs branch submit: --nav-comment has the custom type submit.NavCommentWhen: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs branch submit: --nav-comment-sync has the custom type submit.NavCommentSync: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs branch submit: --nav-comment-downstack has the custom type submit.NavCommentDownstack: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs branch submit: --nav-comment-trunk-link has the custom type submit.NavCommentTrunkLink: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs branch submit: --skip-restack-check has the custom type submit.SkipRestackCheck: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs branch submit: --labels-add-when has the custom type submit.LabelsAddWhen: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs branch submit: --reviewers-add-when has the custom type submit.ReviewersAddWhen: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs commit create: --restack has the custom type spice.AutoRestackMode: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs commit create: --restack is negatable but its type is string, and a rotini negatable flag is a bool: --no-restack was imported as a bool flag of its own; when it is given, set --restack to its negated value in the handler
+[unsupported] gs commit create: xor group "commit-message-source" spans flags of more than one command: a rotini group names flags of one command, so it was dropped
+[lossy] gs commit amend: --restack has the custom type spice.AutoRestackMode: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs commit amend: --restack is negatable but its type is string, and a rotini negatable flag is a bool: --no-restack was imported as a bool flag of its own; when it is given, set --restack to its negated value in the handler
+[unsupported] gs commit amend: xor group "commit-message-source" spans flags of more than one command: a rotini group names flags of one command, so it was dropped
+[lossy] gs commit split: --restack has the custom type spice.AutoRestackMode: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs commit split: --restack is negatable but its type is string, and a rotini negatable flag is a bool: --no-restack was imported as a bool flag of its own; when it is given, set --restack to its negated value in the handler
+[unsupported] gs commit split: xor group "commit-message-source" spans flags of more than one command: a rotini group names flags of one command, so it was dropped
+[lossy] gs commit fixup: --restack has the custom type spice.AutoRestackMode: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs commit fixup: --restack is negatable but its type is string, and a rotini negatable flag is a bool: --no-restack was imported as a bool flag of its own; when it is given, set --restack to its negated value in the handler
+[lossy] gs commit pick: --restack has the custom type spice.AutoRestackMode: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[lossy] gs commit pick: --restack is negatable but its type is string, and a rotini negatable flag is a bool: --no-restack was imported as a bool flag of its own; when it is given, set --restack to its negated value in the handler
+[lossy] gs review comment: <file_line_end> has the custom type review.Anchor: imported as string; use a type with import: and a TextUnmarshaler, or an enum
+[unsupported] gs up: xor group "detach-or-dry-run" spans flags of more than one command: a rotini group names flags of one command, so it was dropped
+[unsupported] gs down: xor group "detach-or-dry-run" spans flags of more than one command: a rotini group names flags of one command, so it was dropped
+[unsupported] gs top: xor group "detach-or-dry-run" spans flags of more than one command: a rotini group names flags of one command, so it was dropped
+[unsupported] gs bottom: xor group "detach-or-dry-run" spans flags of more than one command: a rotini group names flags of one command, so it was dropped
+[unsupported] gs trunk: xor group "detach-or-dry-run" spans flags of more than one command: a rotini group names flags of one command, so it was dropped
+[info] gs: the test binary's name "gs.test", which the program read from os.Args[0], was replaced by "gs" in 16 commands
+[lossy] gs: Kong variables ${defaultPrompt} were not supplied: help keeps them as written, and the defaults, enums and environment variables built from them were dropped; supply each one and import again
+[info] gs: Kong rejects a command that has sub-commands when none is named; rotini runs that command's handler, so make it print help or fail
+[info] gs: options the program passes to kong.Parse or kong.New (kong.Description, kong.Configuration, resolvers, groups, mappers, bindings) were not seen unless given to the import
+imported 74 commands, 302 flags: 71 lossy, 11 unsupported, 3 info

@@ -2,7 +2,6 @@ package cobra_test
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -37,15 +36,13 @@ func TestCorpus(t *testing.T) {
 // them, so it runs only with ROTINI_IMPORT_NETWORK=1. Their note counts must stay within 10%
 // of the recorded baseline; -update rewrites the notes files the baseline was read from.
 func TestNetworkCorpus(t *testing.T) {
-	if os.Getenv("ROTINI_IMPORT_NETWORK") != "1" {
-		t.Skip("set ROTINI_IMPORT_NETWORK=1 to import the pinned real programs")
-	}
+	corpustest.Network(t)
 	cases := []struct {
 		name     string
 		baseline imp.Stats
 	}{
-		{"delve", imp.Stats{Commands: 17, Flags: 42, Lossy: 13, Unsupported: 0, Info: 17}},
-		{"kubectl", imp.Stats{Commands: 109, Flags: 946, Lossy: 105, Unsupported: 3, Info: 92}},
+		{"delve", imp.Stats{Commands: 17, Flags: 42, Lossy: 13, Unsupported: 0, Info: 18}},
+		{"kubectl", imp.Stats{Commands: 109, Flags: 946, Lossy: 231, Unsupported: 3, Info: 100}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -58,24 +55,7 @@ func TestNetworkCorpus(t *testing.T) {
 			if err != nil {
 				t.Fatalf("import failed: %v\n%s", err, stderr)
 			}
-			if *corpustest.Update {
-				corpustest.Golden(t, "network-"+tc.name+".notes.txt", []byte(corpustest.NotesText(res)))
-			}
-			got := res.Stats()
-			for _, m := range []struct {
-				what      string
-				got, want int
-			}{
-				{"commands", got.Commands, tc.baseline.Commands},
-				{"flags", got.Flags, tc.baseline.Flags},
-				{"lossy notes", got.Lossy, tc.baseline.Lossy},
-				{"unsupported notes", got.Unsupported, tc.baseline.Unsupported},
-				{"info notes", got.Info, tc.baseline.Info},
-			} {
-				if tol := (m.want + 9) / 10; m.got < m.want-tol || m.got > m.want+tol {
-					t.Errorf("%s: %d, baseline %d (±%d)", m.what, m.got, m.want, tol)
-				}
-			}
+			corpustest.Baseline(t, tc.name, res, tc.baseline)
 		})
 	}
 }

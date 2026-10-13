@@ -752,6 +752,11 @@
     {
       "path": "acme",
       "level": "info",
+      "msg": "urfave/cli also answers \"<command> help\" on each command with sub-commands; rotini's help command is on the root only, so \"help <command>\" or --help reaches that help"
+    },
+    {
+      "path": "acme",
+      "level": "info",
       "msg": "urfave/cli prints deprecation warnings itself; in rotini a hook reads rotini.Deprecations and prints them"
     },
     {
