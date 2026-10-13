@@ -41,7 +41,6 @@ func (im *importer) flags(c *cobra.Command, path string) ([]*imp.Flag, []*imp.Fl
 	var out []*imp.Flag
 	names := map[string]string{} // pflag name -> imported name, for this command's own flags
 	used := walk.Names{}
-	locals := 0
 	add := func(f *pflag.Flag, cascading bool) {
 		switch {
 		case f.Name == "help" && isRoot:
@@ -57,16 +56,10 @@ func (im *importer) flags(c *cobra.Command, path string) ([]*imp.Flag, []*imp.Fl
 		}
 		rf := im.flag(c, path, f, cascading, used)
 		names[f.Name] = rf.Name
-		if !cascading {
-			locals++
-		}
 		out = append(out, rf)
 	}
 	c.PersistentFlags().VisitAll(func(f *pflag.Flag) { add(f, true) })
 	c.LocalNonPersistentFlags().VisitAll(func(f *pflag.Flag) { add(f, false) })
-	if locals > 0 && hasRealSubCommands(c) {
-		im.parentLocalFlags = append(im.parentLocalFlags, path)
-	}
 	if help != nil {
 		out = append([]*imp.Flag{help}, out...)
 		if c.Flags().ShorthandLookup("h") != nil && c.Flags().ShorthandLookup("h").Name != "help" {
@@ -99,9 +92,12 @@ func (im *importer) builtinFlag(f *pflag.Flag, kind string, cascading bool) *imp
 var backquoted = regexp.MustCompile("`([^`]+)`")
 
 func (im *importer) flag(c *cobra.Command, path string, f *pflag.Flag, cascading bool, used walk.Names) *imp.Flag {
-	name, renamed := used.RenameFlag(f.Name, im.inherited)
+	name, renamed, shadowed := used.RenameFlag(f.Name, im.inherited)
 	if renamed != "" {
 		im.notef(path, imp.Lossy, "flag --%s %s; renamed to --%s", f.Name, renamed, name)
+	}
+	if shadowed != "" {
+		im.notef(path, imp.Lossy, walk.ShadowNote, name, shadowed, name)
 	}
 	rf := &imp.Flag{Name: name, Cascading: cascading, Hidden: f.Hidden, Deprecated: f.Deprecated}
 	im.orig[rf] = f.Name
@@ -455,15 +451,6 @@ func flagCompletion(c *cobra.Command, name string) (completionFunc, bool) {
 	}
 	fn, ok := l.GetFlagCompletionFunc(name)
 	return fn, ok && fn != nil
-}
-
-func hasRealSubCommands(c *cobra.Command) bool {
-	for _, sub := range c.Commands() {
-		if !strings.HasPrefix(sub.Name(), "__complete") && !isDefaultHelpCmd(sub) && !isDefaultCompletionCmd(sub) {
-			return true
-		}
-	}
-	return false
 }
 
 func (im *importer) argCompletion(c *cobra.Command, path string, args []*imp.Argument) {

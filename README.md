@@ -18,7 +18,7 @@ One module holds the description and one package per framework:
 - Names arguments from the usage line (Cobra's `Use`, urfave/cli's `ArgsUsage`) where the framework declares none, sanitised to valid names and de-duplicated
 - Reports what it cannot carry across exactly, one note per item, graded `lossy`, `unsupported` or `info`
 - Points at every run hook with its file and line, mapped to the matching rotini handler hook
-- Leaves out what the program worked out on the importing machine: a default under the home, cache, configuration, per-user temporary or working directory, or holding the host name, is dropped with a note; in help text the same paths are written as tokens (`~/.app.yaml`), with a note; and the test binary's name read from `os.Args[0]` is replaced by the program's
+- Leaves out what the program worked out on the importing machine: a default under the home, cache, configuration, per-user temporary or working directory, or holding the host name, is dropped with a note; in help text, with a note, and in notes the same paths are written as tokens (`~/.app.yaml`); a default under a shared temporary directory such as `/tmp` is kept with a note; and the test binary's name read from `os.Args[0]` is replaced by the program's, including a root named after it
 - A versioned JSON description (`"format": "rotini-import/1"`); `Read` refuses a major version it does not know
 
 ## Installation
@@ -69,7 +69,7 @@ func main() {
 | `Name()`, `Short`, `Long`, `Aliases`, `Hidden`, `Deprecated`, `Example` | `name`, `summary`, `description`, `aliases`, `hidden`, `deprecated`, `examples` | examples are split into command lines, joining continued lines and open quotes; comment lines are noted |
 | `GroupID` and the parent's group title | `group` | |
 | the root's display-name annotation | `display_name` | |
-| `PersistentFlags()` / local flags | flags with / without `cascading` | rotini also accepts a command's own flags after a sub-command name |
+| `PersistentFlags()` / local flags | flags with / without `cascading` | |
 | pflag types, `DefValue`, `NoOptDefVal` | `type`, `default`, `implicit_value` | `time` layouts, custom `pflag.Value` and callback flags are lossy |
 | required, filename and dirname annotations | `required`, `complete: {kind: file \| directory}` | a required flag's default is dropped |
 | the three flag-group annotations | `required_together`, `at_least_one`, `mutually_exclusive`; the last two over one set become `one_of` | groups mixing a command's own and inherited flags are dropped |

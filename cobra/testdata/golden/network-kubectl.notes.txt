@@ -329,7 +329,6 @@
 [lossy] kubectl: --cache-dir: the default "~/.kube/cache" holds the home directory of the machine the import ran on, so it was dropped; declare it with expand: or set it in the handler
 [info] kubectl: k8s.io/kubectl/pkg/cmd/util.DefaultSubCommandRun.func1 is the Run of 7 commands: it is a closure one function made for each, so the code to port is in the function each command passed to it
 [info] kubectl: Cobra prints deprecation warnings itself; in rotini a hook reads rotini.Deprecations and prints them
-[info] kubectl: rotini also accepts a command's own flags after a sub-command name (kubectl apply, kubectl create)
 [info] kubectl: commands are imported in Cobra's alphabetical order; rotini lists them in the order the spec declares them
 [info] kubectl: flags and commands added inside a hook (PersistentPreRun, PreRun, Run), an OnInitialize function or a plugin loader are not in the walked tree and were not imported
-imported 109 commands, 946 flags: 231 lossy, 3 unsupported, 100 info
+imported 109 commands, 946 flags: 231 lossy, 3 unsupported, 99 info

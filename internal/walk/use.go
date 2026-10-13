@@ -182,15 +182,15 @@ func unwrap(f string) string {
 	return strings.Trim(f, "[]<>(){}")
 }
 
-// sameRun reports whether two placeholder names are one name with different indexes:
-// "key_1" and "key_n", "file1" and "filen".
+// sameRun reports whether two placeholder names are one name with different indexes, or
+// with an index and without one: "key_1" and "key_n", "file1" and "filen", "file" and "filen".
 func sameRun(a, b string) bool {
 	if a == b {
 		return true
 	}
 	sa, ia := cutIndex(a)
 	sb, ib := cutIndex(b)
-	return ia && ib && sa != "" && sa == sb
+	return (ia && ib && sa != "" && sa == sb) || (ib && a == sb) || (ia && b == sa)
 }
 
 // cutIndex removes a trailing index (digits, or "n") and the '_' before it from a name.

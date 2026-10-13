@@ -605,5 +605,5 @@ func TestRenamedFlagDoesNotShadowInherited(t *testing.T) {
 	}
 	res := importGrammar(t, &grammar, kongimport.Options{})
 	flagNamed(t, find(t, res, "app sub"), "foo-bar-2")
-	wantNote(t, res, "app sub", imp.Lossy, "would be --foo-bar, the name of the inherited flag --foo-bar")
+	wantNote(t, res, "app sub", imp.Lossy, "would be --foo-bar, the name of an inherited flag")
 }

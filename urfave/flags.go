@@ -48,7 +48,6 @@ func (im *importer) flags(c *cli.Command, path string, hasSubs bool) ([]*imp.Fla
 	var out []*imp.Flag
 	names := map[any]string{} // flagKey -> imported name
 	used := walk.Names{}
-	locals := 0
 	groupCategory := map[any]string{}
 	for _, g := range c.MutuallyExclusiveFlags {
 		for _, opt := range g.Flags {
@@ -72,16 +71,10 @@ func (im *importer) flags(c *cli.Command, path string, hasSubs bool) ([]*imp.Fla
 		if rf.Group == "" && k != nil {
 			rf.Group = groupCategory[k]
 		}
-		if !rf.Cascading {
-			locals++
-		}
 		if k != nil {
 			names[k] = rf.Name
 		}
 		out = append(out, rf)
-	}
-	if locals > 0 && hasSubs {
-		im.parentLocalFlags = append(im.parentLocalFlags, path)
 	}
 	return out, im.flagGroups(c, path, names)
 }
@@ -128,9 +121,12 @@ func (im *importer) identifiers(names []string, path, flag string) []string {
 
 func (im *importer) flag(f cli.Flag, path string, hasSubs bool, used walk.Names) *imp.Flag {
 	names := flagNames(f)
-	name, why := used.RenameFlag(names[0], im.inherited)
+	name, why, shadowed := used.RenameFlag(names[0], im.inherited)
 	if why != "" {
 		im.notef(path, imp.Lossy, "flag --%s %s; renamed to --%s", names[0], why, name)
+	}
+	if shadowed != "" {
+		im.notef(path, imp.Lossy, walk.ShadowNote, name, shadowed, name)
 	}
 	what := "--" + name
 	rf := &imp.Flag{Name: name, Identifiers: im.identifiers(append([]string{name}, names[1:]...), path, name)}

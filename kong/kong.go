@@ -73,7 +73,9 @@ func FromKong(grammar any, opts Options) (res *imp.Result, err error) {
 	im.app = app
 	im.countGroups(app.Model.Node)
 	rc := im.command(app.Model.Node, name, "")
-	walk.NewMachine(name).Scrub(rc, name, func(p string, level imp.Level, msg string) { im.notef(p, level, "%s", msg) })
+	m := walk.NewMachine(name)
+	m.ScrubNotes(im.notes)
+	m.Scrub(rc, name, func(p string, level imp.Level, msg string) { im.notef(p, level, "%s", msg) })
 	im.programNotes(name)
 	return &imp.Result{
 		Source:  walk.Source("kong", kongModule),

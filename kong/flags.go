@@ -76,10 +76,13 @@ func (im *importer) flags(n *kong.Node, path string) ([]*imp.Flag, []*imp.FlagGr
 	}
 	groups := im.flagGroups(n, path, out, names)
 	for _, nf := range extra {
-		name, why := used.RenameFlag(nf.Name, im.inherited)
+		name, why, shadowed := used.RenameFlag(nf.Name, im.inherited)
 		im.orig[nf] = nf.Name
 		if why != "" {
 			im.notef(path, imp.Lossy, "the flag for %s %s; it was named --%s", nf.Identifiers[0], why, name)
+		}
+		if shadowed != "" {
+			im.notef(path, imp.Lossy, walk.ShadowNote, name, shadowed, name)
 		}
 		nf.Name = name
 		out = append(out, nf)
@@ -108,9 +111,12 @@ func builtinFlag(f *kong.Flag, kind string, cascading bool) *imp.Flag {
 // flag maps one flag. A negatable flag that is not a bool also gives negated, a bool flag of
 // its own for the negated form, since a rotini negatable flag is a bool.
 func (im *importer) flag(f *kong.Flag, path string, cascading bool, used walk.Names) (rf, negated *imp.Flag) {
-	name, why := used.RenameFlag(f.Name, im.inherited)
+	name, why, shadowed := used.RenameFlag(f.Name, im.inherited)
 	if why != "" {
 		im.notef(path, imp.Lossy, "flag --%s %s; renamed to --%s", f.Name, why, name)
+	}
+	if shadowed != "" {
+		im.notef(path, imp.Lossy, walk.ShadowNote, name, shadowed, name)
 	}
 	rf = &imp.Flag{Name: name, Summary: text(f.Help), Cascading: cascading, Hidden: f.Hidden}
 	im.orig[rf] = f.Name

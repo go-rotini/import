@@ -25,6 +25,8 @@ type importer struct {
 	notes       []imp.Note
 	hooks       []imp.Hook
 	groupsNoted map[groupKey]bool
+	rootName    string // the root's imported name
+	testRoot    string // the root's name when it is the test binary's name, else ""
 	// inherited maps the imported names of the cascading flags the command being walked
 	// inherits to their pflag names; orig holds each imported flag's pflag name.
 	inherited map[string]string
@@ -32,7 +34,6 @@ type importer struct {
 	// facts gathered for the once-per-import notes
 	deprecations     bool
 	groupNoRun       bool
-	parentLocalFlags []string
 	nestedPersistent bool
 }
 
@@ -54,11 +55,16 @@ func FromCobra(cmd *cobra.Command, opts Options) (res *imp.Result, err error) {
 	}()
 	root := cmd.Root()
 	im := &importer{opts: opts, groupsNoted: map[groupKey]bool{}, orig: map[*imp.Flag]string{}}
-	im.addDefaults(root)
-	rootName := walk.CommandName(root.Name())
-	if rootName != root.Name() {
-		im.notef(rootName, imp.Lossy, "command name %q is not a valid rotini name; renamed to %q", root.Name(), rootName)
+	progName, fromTest := walk.ProgramName(root.Name())
+	rootName := walk.CommandName(progName)
+	im.rootName = rootName
+	if fromTest {
+		im.testRoot = root.Name()
 	}
+	if rootName != progName {
+		im.notef(rootName, imp.Lossy, "command name %q is not a valid rotini name; renamed to %q", progName, rootName)
+	}
+	im.addDefaults(root)
 	rc := im.command(root, rootName, "")
 	im.programNotes(root, rc)
 	return &imp.Result{
@@ -89,18 +95,18 @@ func (im *importer) addDefaults(root *cobra.Command) {
 func (im *importer) safely(c *cobra.Command, what string, fn func()) {
 	defer func() {
 		if r := recover(); r != nil {
-			im.notef(commandPath(c), imp.Unsupported, "Cobra could not add its default %s: %v", what, r)
+			im.notef(im.commandPath(c), imp.Unsupported, "Cobra could not add its default %s: %v", what, r)
 		}
 	}()
 	fn()
 }
 
 // commandPath is c's path as the import names it.
-func commandPath(c *cobra.Command) string {
+func (im *importer) commandPath(c *cobra.Command) string {
 	if !c.HasParent() {
-		return walk.CommandName(c.Name())
+		return im.rootName
 	}
-	return walk.JoinPath(commandPath(c.Parent()), walk.CommandName(c.Name()))
+	return walk.JoinPath(im.commandPath(c.Parent()), walk.CommandName(c.Name()))
 }
 
 func (im *importer) notef(path string, level imp.Level, format string, a ...any) {
@@ -313,7 +319,12 @@ func (im *importer) optionsFirst(path string, rc *imp.Command) {
 // programNotes adds the notes that concern the whole import, once each.
 func (im *importer) programNotes(root *cobra.Command, rc *imp.Command) {
 	path := rc.Name
-	walk.NewMachine(path).Scrub(rc, path, func(p string, level imp.Level, msg string) { im.notef(p, level, "%s", msg) })
+	m := walk.NewMachine(path)
+	m.ScrubNotes(im.notes)
+	m.Scrub(rc, path, func(p string, level imp.Level, msg string) { im.notef(p, level, "%s", msg) })
+	if im.testRoot != "" {
+		im.notef(path, imp.Info, "the root's name %q is the test binary's name, which the program read from os.Args[0]; it was imported as %q", im.testRoot, path)
+	}
 	for _, msg := range walk.SharedHooks(im.hooks) {
 		im.notef(path, imp.Info, "%s", msg)
 	}
@@ -325,9 +336,6 @@ func (im *importer) programNotes(root *cobra.Command, rc *imp.Command) {
 	}
 	if im.nestedPersistent {
 		im.notef(path, imp.Info, "Cobra runs only the nearest PersistentPreRun and PersistentPostRun; rotini runs every ancestor's CascadingPreRun and CascadingPostRun")
-	}
-	if len(im.parentLocalFlags) > 0 {
-		im.notef(path, imp.Info, "rotini also accepts a command's own flags after a sub-command name (%s)", strings.Join(im.parentLocalFlags, ", "))
 	}
 	if cobra.EnableCommandSorting {
 		im.notef(path, imp.Info, "commands are imported in Cobra's alphabetical order; rotini lists them in the order the spec declares them")

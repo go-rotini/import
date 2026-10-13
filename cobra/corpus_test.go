@@ -42,7 +42,7 @@ func TestNetworkCorpus(t *testing.T) {
 		baseline imp.Stats
 	}{
 		{"delve", imp.Stats{Commands: 17, Flags: 42, Lossy: 13, Unsupported: 0, Info: 18}},
-		{"kubectl", imp.Stats{Commands: 109, Flags: 946, Lossy: 231, Unsupported: 3, Info: 100}},
+		{"kubectl", imp.Stats{Commands: 109, Flags: 946, Lossy: 231, Unsupported: 3, Info: 99}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

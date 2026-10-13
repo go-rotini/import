@@ -42,10 +42,10 @@ type importer struct {
 	inherited map[string]string
 	orig      map[*imp.Flag]string
 	// facts gathered for the once-per-import notes
-	deprecations     bool
-	noAction         bool
-	groupHelp        bool // a command below the root has sub-commands
-	parentLocalFlags []string
+	deprecations bool
+	noAction     bool
+	groupHelp    bool   // a command below the root has sub-commands
+	testRoot     string // the root's Name when it is the test binary's name, else ""
 }
 
 // FromURFave imports the tree that cmd belongs to, starting at its root. It reads the tree
@@ -66,6 +66,8 @@ func FromURFave(cmd *cli.Command, opts Options) (res *imp.Result, err error) {
 	name := root.Name
 	if name == "" {
 		name = programName(opts.Name)
+	} else if prog, ok := walk.ProgramName(name); ok {
+		im.testRoot, name = name, prog
 	}
 	im.separator(walk.CommandName(name))
 	rc := im.command(root, walk.CommandName(name), "", name)
@@ -351,7 +353,12 @@ func (im *importer) passthrough(path string, rc *imp.Command, hasSubs bool) {
 // programNotes adds the notes that concern the whole import, once each.
 func (im *importer) programNotes(rc *imp.Command) {
 	path := rc.Name
-	walk.NewMachine(path).Scrub(rc, path, func(p string, level imp.Level, msg string) { im.notef(p, level, "%s", msg) })
+	m := walk.NewMachine(path)
+	m.ScrubNotes(im.notes)
+	m.Scrub(rc, path, func(p string, level imp.Level, msg string) { im.notef(p, level, "%s", msg) })
+	if im.testRoot != "" {
+		im.notef(path, imp.Info, "the root's name %q is the test binary's name, which the program read from os.Args[0]; it was imported as %q", im.testRoot, path)
+	}
 	for _, msg := range walk.SharedHooks(im.hooks) {
 		im.notef(path, imp.Info, "%s", msg)
 	}
@@ -363,9 +370,6 @@ func (im *importer) programNotes(rc *imp.Command) {
 	}
 	if im.noAction {
 		im.notef(path, imp.Info, "urfave/cli prints help for a command with no Action; rotini runs that command's handler, so make it print help")
-	}
-	if len(im.parentLocalFlags) > 0 {
-		im.notef(path, imp.Info, "rotini also accepts a command's own flags after a sub-command name (%s)", strings.Join(im.parentLocalFlags, ", "))
 	}
 	if walk.DependsOn("github.com/urfave/cli-altsrc/v3") {
 		im.notef(path, imp.Lossy, "cli-altsrc is linked in: values read from configuration files were not imported; declare config_files and key: on inputs by hand")

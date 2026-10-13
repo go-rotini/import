@@ -482,7 +482,7 @@ func TestPersistentAndLocalFlags(t *testing.T) {
 	if hasFlag(ch, "region") || !hasFlag(ch, "n") {
 		t.Fatalf("child flags %+v", ch.Flags)
 	}
-	wantNote(t, res, "app", imp.Info, "own flags after a sub-command name (app)")
+	noNote(t, res, "app", "own flags after a sub-command name")
 }
 
 func groupsOf(c *imp.Command) []string {
@@ -1022,5 +1022,51 @@ func TestRenamedFlagDoesNotShadowInherited(t *testing.T) {
 	s := find(t, res, "app sub")
 	flagNamed(t, s, "foo-bar-2")
 	flagNamed(t, s, "same")
-	wantNote(t, res, "app sub", imp.Lossy, "flag --foo.bar would be --foo-bar, the name of the inherited flag --foo-bar; renamed to --foo-bar-2")
+	wantNote(t, res, "app sub", imp.Lossy, "flag --foo.bar would be --foo-bar, the name of an inherited flag; renamed to --foo-bar-2")
+}
+
+func TestNotesWrittenBeforeTheScrubHoldNoHome(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	state := filepath.Join(home, ".app-state")
+	root := &cobra.Command{Use: "app", Run: run, Example: "# writes " + state + "\napp run"}
+	root.Flags().String("state", state, "")
+	_ = root.MarkFlagRequired("state")
+	res := importTree(t, root, cobraimport.Options{})
+	for _, n := range res.Notes {
+		if strings.Contains(n.Msg, home) {
+			t.Errorf("note holds the home directory: %s", n)
+		}
+	}
+	wantNote(t, res, "app", imp.Lossy, "has the default ~/.app-state")
+	wantNote(t, res, "app", imp.Lossy, `["writes ~/.app-state"]`)
+}
+
+func TestValidFlagOverridesRenamedInherited(t *testing.T) {
+	root := &cobra.Command{Use: "app", Run: run}
+	root.PersistentFlags().String("foo.bar", "", "")
+	sub := &cobra.Command{Use: "sub", Run: run}
+	sub.Flags().String("foo-bar", "", "")
+	root.AddCommand(sub)
+	res := importTree(t, root, cobraimport.Options{})
+	flagNamed(t, res.Command, "foo-bar")
+	flagNamed(t, find(t, res, "app sub"), "foo-bar")
+	wantNote(t, res, "app sub", imp.Lossy, "flag --foo-bar overrides the inherited --foo.bar, which was imported as --foo-bar")
+}
+
+func TestRootNamedFromArgs0(t *testing.T) {
+	testName := filepath.Base(os.Args[0])
+	prog := strings.TrimSuffix(strings.TrimSuffix(testName, ".exe"), ".test")
+	if prog == strings.TrimSuffix(testName, ".exe") {
+		t.Skip("not running as a go test binary")
+	}
+	root := &cobra.Command{Use: testName, Run: run, Short: "the " + testName + " tool", Example: testName + " sub x"}
+	root.AddCommand(&cobra.Command{Use: "sub", Run: run})
+	res := importTree(t, root, cobraimport.Options{})
+	if res.Command.Name != prog || res.Command.Summary != "the "+prog+" tool" || !reflect.DeepEqual(res.Command.Examples, []string{prog + " sub x"}) {
+		t.Errorf("root %q, summary %q, examples %q", res.Command.Name, res.Command.Summary, res.Command.Examples)
+	}
+	find(t, res, prog+" sub")
+	wantNote(t, res, prog, imp.Info, "is the test binary's name, which the program read from os.Args[0]; it was imported as "+fmt.Sprintf("%q", prog))
 }

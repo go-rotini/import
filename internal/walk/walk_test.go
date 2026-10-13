@@ -31,6 +31,9 @@ func TestParseUse(t *testing.T) {
 		{"show <repo-id|repo-full-name> [pipeline]", []UseArg{{Name: "repo_id"}, {Name: "pipeline", Optional: true}}},
 		{"annotate (-f FILENAME | TYPE NAME) KEY_1=VAL_1 ... KEY_N=VAL_N", []UseArg{{Name: "type", Optional: true, Choice: true}, {Name: "key_1", Variadic: true}}},
 		{"cat FILE1 ... FILEN", []UseArg{{Name: "file1", Variadic: true}}},
+		{"cat FILE ... FILEN", []UseArg{{Name: "file", Variadic: true}}},
+		{"run ARG ... ARGN", []UseArg{{Name: "arg", Variadic: true}}},
+		{"grep PATTERN ... PATTERNN", []UseArg{{Name: "pattern", Variadic: true}}},
 		{"cp SRC ... DST", []UseArg{{Name: "src", Variadic: true}, {Name: "dst"}}},
 		{"logs [-f] [-p] (POD | TYPE/NAME)", []UseArg{{Name: "pod"}}},
 		{"x [-o json|yaml] <a>", []UseArg{{Name: "a"}}},
@@ -292,6 +295,8 @@ func TestHostNames(t *testing.T) {
 		"buildbox7":                       {"buildbox7"},
 		"box.example.com":                 {"box.example.com"},
 		"localhost.localdomain.something": nil,
+		"2024":                            nil,
+		"10.0.0.7":                        nil,
 	} {
 		if got := hostNames(host); !reflect.DeepEqual(got, want) {
 			t.Errorf("hostNames(%q) = %q, want %q", host, got, want)
@@ -393,5 +398,82 @@ func TestSharedHooks(t *testing.T) {
 	got := SharedHooks(hooks)
 	if len(got) != 1 || !strings.Contains(got[0], "example.com/x.Wrap.func1 is the RunE of 2 commands") {
 		t.Fatalf("SharedHooks = %q", got)
+	}
+}
+
+func TestMachineSharedTempNote(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TMPDIR does not set the temporary directory on Windows")
+	}
+	t.Setenv("TMPDIR", "/tmp")
+	root := &imp.Command{Name: "app", Flags: []*imp.Flag{
+		{Name: "dir", Schema: &imp.Schema{Type: "string", Default: "/tmp/app"}},
+		{Name: "other", Schema: &imp.Schema{Type: "string", Default: "/tmpfoo/app"}},
+	}}
+	var notes []string
+	NewMachine("app").Scrub(root, "app", func(path string, level imp.Level, msg string) {
+		notes = append(notes, string(level)+" "+path+": "+msg)
+	})
+	if root.Flags[0].Schema.Default != "/tmp/app" {
+		t.Errorf("--dir default %v", root.Flags[0].Schema.Default)
+	}
+	want := []string{`info app: --dir: the default "/tmp/app" is under the system temporary directory, which other systems put elsewhere; if the program asks the system for it, declare it with expand:`}
+	if !reflect.DeepEqual(notes, want) {
+		t.Errorf("notes:\n%s", strings.Join(notes, "\n"))
+	}
+}
+
+func TestMachineScrubNotes(t *testing.T) {
+	m := &Machine{
+		dirs:     []machineDir{{"/home/me", "the home directory", "~"}},
+		hosts:    []string{"buildbox-7"},
+		testName: "app.test",
+		name:     "app",
+	}
+	notes := []imp.Note{
+		{Path: "app", Level: imp.Lossy, Msg: "--state is required and has the default /home/me/.app-state: dropped"},
+		{Path: "app", Level: imp.Lossy, Msg: `comment lines in the examples dropped: ["write to /home/me/out on buildbox-7"]`},
+		{Path: "app", Level: imp.Info, Msg: "run app.test help; /home/meal stays"},
+	}
+	m.ScrubNotes(notes)
+	for i, want := range []string{
+		"--state is required and has the default ~/.app-state: dropped",
+		`comment lines in the examples dropped: ["write to ~/out on <host>"]`,
+		"run app help; /home/meal stays",
+	} {
+		if notes[i].Msg != want {
+			t.Errorf("note %d: %q, want %q", i, notes[i].Msg, want)
+		}
+	}
+}
+
+func TestNamesRenameFlag(t *testing.T) {
+	inherited := map[string]string{"foo-bar": "foo.bar", "same": "same", "log-level": "log-level"}
+	n := Names{}
+	for _, tc := range []struct{ in, name, why, shadowed string }{
+		// A valid name overrides the inherited flag that was renamed to it.
+		{"foo-bar", "foo-bar", "", "foo.bar"},
+		// The same name as an inherited flag overrides it, as the framework does.
+		{"same", "same", "", ""},
+		// A name that had to be made valid does not take an inherited flag's name.
+		{"log.level", "log-level-2", "would be --log-level, the name of an inherited flag", ""},
+		{"x", "x", "", ""},
+	} {
+		if name, why, shadowed := n.RenameFlag(tc.in, inherited); name != tc.name || why != tc.why || shadowed != tc.shadowed {
+			t.Errorf("RenameFlag(%q) = %q, %q, %q", tc.in, name, why, shadowed)
+		}
+	}
+}
+
+func TestProgramName(t *testing.T) {
+	base := testBinary()
+	if base == "" {
+		t.Skip("not running as a go test binary")
+	}
+	if name, ok := ProgramName(base); !ok || name != strings.TrimSuffix(base, ".test") {
+		t.Errorf("ProgramName(%q) = %q, %v", base, name, ok)
+	}
+	if name, ok := ProgramName("app"); ok || name != "app" {
+		t.Errorf("ProgramName(app) = %q, %v", name, ok)
 	}
 }

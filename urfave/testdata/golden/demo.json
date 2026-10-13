@@ -827,11 +827,6 @@
       "path": "acme",
       "level": "info",
       "msg": "urfave/cli prints help for a command with no Action; rotini runs that command's handler, so make it print help"
-    },
-    {
-      "path": "acme",
-      "level": "info",
-      "msg": "rotini also accepts a command's own flags after a sub-command name (acme)"
     }
   ],
   "hooks": [

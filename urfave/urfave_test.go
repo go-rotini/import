@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -63,6 +64,15 @@ func flagNamed(t *testing.T, c *imp.Command, name string) *imp.Flag {
 	}
 	t.Fatalf("%s has no flag %q", c.Name, name)
 	return nil
+}
+
+func noNote(t *testing.T, res *imp.Result, path, substr string) {
+	t.Helper()
+	for _, n := range res.Notes {
+		if n.Path == path && strings.Contains(n.Msg, substr) {
+			t.Fatalf("unexpected note on %q: %v", path, n)
+		}
+	}
 }
 
 func wantNote(t *testing.T, res *imp.Result, path string, level imp.Level, substr string) {
@@ -371,7 +381,7 @@ func TestFlagDetails(t *testing.T) {
 	if l := flagNamed(t, res.Command, "local"); l.Cascading {
 		t.Fatal("--local cascades")
 	}
-	wantNote(t, res, "app", imp.Info, "rotini also accepts a command's own flags after a sub-command name (app)")
+	noNote(t, res, "app", "own flags after a sub-command name")
 	if tok.Deprecated != "" {
 		wantNote(t, res, "app", imp.Info, "urfave/cli prints deprecation warnings itself")
 	}
@@ -667,5 +677,20 @@ func TestRenamedFlagDoesNotShadowInherited(t *testing.T) {
 	}
 	res := importTree(t, root, urfaveimport.Options{})
 	flagNamed(t, find(t, res, "app sub"), "foo-bar-2")
-	wantNote(t, res, "app sub", imp.Lossy, "would be --foo-bar, the name of the inherited flag --foo-bar")
+	wantNote(t, res, "app sub", imp.Lossy, "would be --foo-bar, the name of an inherited flag")
+}
+
+func TestRootNamedFromArgs0(t *testing.T) {
+	testName := filepath.Base(os.Args[0])
+	prog := strings.TrimSuffix(strings.TrimSuffix(testName, ".exe"), ".test")
+	if prog == strings.TrimSuffix(testName, ".exe") {
+		t.Skip("not running as a go test binary")
+	}
+	root := &cli.Command{Name: testName, Usage: "the " + testName + " tool", Commands: []*cli.Command{{Name: "sub", Action: action}}}
+	res := importTree(t, root, urfaveimport.Options{})
+	if res.Command.Name != prog || res.Command.Summary != "the "+prog+" tool" {
+		t.Errorf("root %q, summary %q", res.Command.Name, res.Command.Summary)
+	}
+	find(t, res, prog+" sub")
+	wantNote(t, res, prog, imp.Info, "is the test binary's name, which the program read from os.Args[0]")
 }

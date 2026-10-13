@@ -20,6 +20,9 @@ type Machine struct {
 	hosts    []string
 	testName string // the test binary's name, "" outside go test
 	name     string // the program's name, which replaces testName
+	// sharedTemp is the system temporary directory when it is a shared one, such as /tmp,
+	// which find does not look for, else "".
+	sharedTemp string
 }
 
 // machineDir is a directory of this machine: what a note calls it, and the token a note
@@ -45,7 +48,11 @@ func NewMachine(program string) *Machine {
 	if dir, err := os.UserConfigDir(); err == nil {
 		add(dir, "the user configuration directory", "<config>")
 	}
-	add(os.TempDir(), "the temporary directory", "<temp>")
+	temp := os.TempDir()
+	add(temp, "the temporary directory", "<temp>")
+	if t := strings.TrimRight(filepath.ToSlash(temp), "/"); sharedDirs[t] {
+		m.sharedTemp = t
+	}
 	if dir, err := os.Getwd(); err == nil {
 		add(dir, "the working directory", "<cwd>")
 	}
@@ -53,11 +60,30 @@ func NewMachine(program string) *Machine {
 	if host, err := os.Hostname(); err == nil {
 		m.hosts = hostNames(host)
 	}
-	base := strings.TrimSuffix(filepath.Base(os.Args[0]), ".exe")
-	if strings.HasSuffix(base, ".test") && base != program {
+	if base := testBinary(); base != "" && base != program {
 		m.testName = base
 	}
 	return m
+}
+
+// testBinary is the running test binary's name, without ".exe", or "" outside go test.
+func testBinary() string {
+	base := strings.TrimSuffix(filepath.Base(os.Args[0]), ".exe")
+	if !strings.HasSuffix(base, ".test") {
+		return ""
+	}
+	return base
+}
+
+// ProgramName returns name without the ".test" suffix go test gives a binary when name is
+// the running test binary's name, as a program that names itself from os.Args[0] reads it
+// under the import, and reports whether it did.
+func ProgramName(name string) (string, bool) {
+	base := testBinary()
+	if base == "" || (name != base && name != base+".exe") {
+		return name, false
+	}
+	return strings.TrimSuffix(base, ".test"), true
 }
 
 // sharedDirs are system-wide temporary directories. A program that writes one literally
@@ -67,9 +93,9 @@ var sharedDirs = map[string]bool{
 }
 
 // hostNames lists the names of the host called host that are looked for: the full name and
-// its first label, each only when it holds a digit, a dot or a hyphen. A plain word such as
-// "ubuntu" or "server" is as likely to be a value the program declares, and "localhost"
-// names every machine.
+// its first label, each only when it holds a letter and also a digit, a dot or a hyphen. A
+// plain word such as "ubuntu" or "server", or a number such as "2024", is as likely to be a
+// value the program declares, and "localhost" names every machine.
 func hostNames(host string) []string {
 	short, _, _ := strings.Cut(host, ".")
 	if strings.EqualFold(short, "localhost") {
@@ -77,7 +103,7 @@ func hostNames(host string) []string {
 	}
 	var out []string
 	for _, h := range []string{host, short} {
-		if len(h) >= 4 && strings.ContainsAny(h, "0123456789.-") && (len(out) == 0 || out[0] != h) {
+		if len(h) >= 4 && strings.ContainsAny(h, "0123456789.-") && strings.IndexFunc(h, IsLetter) >= 0 && (len(out) == 0 || out[0] != h) {
 			out = append(out, h)
 		}
 	}
@@ -104,13 +130,17 @@ func (m *Machine) find(s string) string {
 }
 
 // value applies find to every string in a default.
-func (m *Machine) value(v any) string {
+func (m *Machine) value(v any) string { return eachString(v, m.find) }
+
+// eachString applies find to every string in a default, map keys included, and returns the
+// first result that is not "".
+func eachString(v any, find func(string) string) string {
 	switch t := v.(type) {
 	case string:
-		return m.find(t)
+		return find(t)
 	case []any:
 		for _, e := range t {
-			if w := m.value(e); w != "" {
+			if w := eachString(e, find); w != "" {
 				return w
 			}
 		}
@@ -121,15 +151,29 @@ func (m *Machine) value(v any) string {
 		}
 		sort.Strings(keys)
 		for _, k := range keys {
-			if w := m.find(k); w != "" {
+			if w := find(k); w != "" {
 				return w
 			}
-			if w := m.value(t[k]); w != "" {
+			if w := eachString(t[k], find); w != "" {
 				return w
 			}
 		}
 	}
 	return ""
+}
+
+// underSharedTemp reports whether a default holds a path in the shared system temporary
+// directory.
+func (m *Machine) underSharedTemp(v any) bool {
+	if m.sharedTemp == "" {
+		return false
+	}
+	return eachString(v, func(s string) string {
+		if containsWord(filepath.ToSlash(s), m.sharedTemp, "/") {
+			return m.sharedTemp
+		}
+		return ""
+	}) != ""
 }
 
 // text replaces the test binary's name in help text with the program's name.
@@ -214,6 +258,16 @@ func (m *Machine) shown(v any) string {
 		s = strings.ReplaceAll(s, h, "<host>")
 	}
 	return s
+}
+
+// ScrubNotes writes the program's name where a note holds the test binary's name, and this
+// machine's directories and host name as tokens, as [Machine.Scrub] does for help text. Call
+// it on the notes written before Scrub runs, since some quote the values Scrub is for.
+func (m *Machine) ScrubNotes(notes []imp.Note) {
+	for i := range notes {
+		msg, _ := m.text(notes[i].Msg)
+		notes[i].Msg, _ = m.tokens(msg)
+	}
 }
 
 // Scrub walks the imported tree under c, whose path is path. It writes the program's name
@@ -317,6 +371,8 @@ func (cs *commandScrub) schema(what string, s *imp.Schema) {
 		if w := m.value(s.Default); w != "" {
 			cs.note(cs.path, imp.Lossy, fmt.Sprintf("%s: the default %q holds %s of the machine the import ran on, so it was dropped; declare it with expand: or set it in the handler", what, m.shown(s.Default), w))
 			s.Default = nil
+		} else if m.underSharedTemp(s.Default) {
+			cs.note(cs.path, imp.Info, fmt.Sprintf("%s: the default %q is under the system temporary directory, which other systems put elsewhere; if the program asks the system for it, declare it with expand:", what, m.shown(s.Default)))
 		}
 	}
 }
@@ -384,15 +440,25 @@ func (n Names) Rename(orig string) (name, why string) {
 }
 
 // RenameFlag is [Names.Rename] for a flag of a command that inherits the cascading flags in
-// inherited, which maps their imported names to their names in the framework. A flag whose
-// valid name is an inherited flag's imported name, but which is not that flag's own name,
-// gets a numeric suffix, so it does not shadow the flag it inherits. A flag with the same
-// name as an inherited one keeps it, overriding that flag as the framework does.
-func (n Names) RenameFlag(orig string, inherited map[string]string) (name, why string) {
+// inherited, which maps their imported names to their names in the framework. A flag that
+// had to be renamed, and whose new name is an inherited flag's imported name, gets a numeric
+// suffix instead, so it does not shadow the flag it inherits. A flag whose own name is valid
+// keeps it, overriding an inherited flag of that name as the framework does; when that
+// inherited flag was renamed to it, shadowed is the inherited flag's name in the framework,
+// which can no longer be given under this command.
+func (n Names) RenameFlag(orig string, inherited map[string]string) (name, why, shadowed string) {
 	valid := CommandName(orig)
 	from, ok := inherited[valid]
 	if !ok || from == orig {
-		return n.Rename(orig)
+		name, why = n.Rename(orig)
+		return name, why, ""
+	}
+	if valid == orig {
+		name, why = n.Rename(orig)
+		if name == orig {
+			shadowed = from
+		}
+		return name, why, shadowed
 	}
 	for i := 2; ; i++ {
 		name = fmt.Sprintf("%s-%d", valid, i)
@@ -401,8 +467,16 @@ func (n Names) RenameFlag(orig string, inherited map[string]string) (name, why s
 		}
 	}
 	n[name] = true
-	return name, fmt.Sprintf("would be --%s, the name of the inherited flag --%s", valid, from)
+	if from == valid {
+		return name, fmt.Sprintf("would be --%s, the name of an inherited flag", valid), ""
+	}
+	return name, fmt.Sprintf("would be --%s, the name the inherited flag --%s was imported as", valid, from), ""
 }
+
+// ShadowNote is the note for a flag that keeps its name and so overrides an inherited flag
+// renamed to it, as [Names.RenameFlag] reports one. Its verbs are the flag's name, the
+// inherited flag's name in the framework, and the flag's name again.
+const ShadowNote = "flag --%s overrides the inherited --%s, which was imported as --%s, so the inherited flag can't be given under this command"
 
 // Cascade returns the cascading flags a command's sub-commands inherit, as
 // [Names.RenameFlag] takes them: those the command inherits, and those of its flags that
