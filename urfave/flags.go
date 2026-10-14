@@ -46,13 +46,15 @@ func allFlags(c *cli.Command) []cli.Flag {
 
 func (im *importer) flags(c *cli.Command, path string, hasSubs bool) ([]*imp.Flag, []*imp.FlagGroup) {
 	var out []*imp.Flag
-	names := map[cli.Flag]string{}
-	locals := 0
-	groupCategory := map[cli.Flag]string{}
+	names := map[any]string{} // flagKey -> imported name
+	used := walk.Names{}
+	groupCategory := map[any]string{}
 	for _, g := range c.MutuallyExclusiveFlags {
 		for _, opt := range g.Flags {
 			for _, f := range opt {
-				groupCategory[f] = g.Category
+				if k := flagKey(f); k != nil {
+					groupCategory[k] = g.Category
+				}
 			}
 		}
 	}
@@ -61,23 +63,34 @@ func (im *importer) flags(c *cli.Command, path string, hasSubs bool) ([]*imp.Fla
 			im.notef(path, imp.Unsupported, "a flag of type %T has no name, so it was dropped", f)
 			continue
 		}
-		if _, seen := names[f]; seen {
+		k := flagKey(f)
+		if _, seen := names[k]; seen && k != nil {
 			continue
 		}
-		rf := im.flag(f, path, hasSubs)
-		if rf.Group == "" {
-			rf.Group = groupCategory[f]
+		rf := im.flag(f, path, hasSubs, used)
+		if rf.Group == "" && k != nil {
+			rf.Group = groupCategory[k]
 		}
-		if !rf.Cascading {
-			locals++
+		if k != nil {
+			names[k] = rf.Name
 		}
-		names[f] = rf.Name
 		out = append(out, rf)
 	}
-	if locals > 0 && hasSubs {
-		im.parentLocalFlags = append(im.parentLocalFlags, path)
-	}
 	return out, im.flagGroups(c, path, names)
+}
+
+// flagKey identifies a flag for the maps the import keeps: its pointer, or the flag itself
+// when it is a comparable value. A flag stored by a value that cannot be compared has no key,
+// so it is never taken for another, and a group naming it loses it.
+func flagKey(f cli.Flag) any {
+	v := reflect.ValueOf(f)
+	switch {
+	case v.Kind() == reflect.Pointer:
+		return v.Pointer()
+	case v.Comparable():
+		return f
+	}
+	return nil
 }
 
 // flagNames lists the names a flag declares, first its own. A BoolWithInverseFlag's Names
@@ -106,14 +119,18 @@ func (im *importer) identifiers(names []string, path, flag string) []string {
 	return append(short, long...)
 }
 
-func (im *importer) flag(f cli.Flag, path string, hasSubs bool) *imp.Flag {
+func (im *importer) flag(f cli.Flag, path string, hasSubs bool, used walk.Names) *imp.Flag {
 	names := flagNames(f)
-	name := walk.CommandName(names[0])
-	if name != names[0] {
-		im.notef(path, imp.Lossy, "flag --%s is not a valid rotini name; renamed to --%s", names[0], name)
+	name, why, shadowed := used.RenameFlag(names[0], im.inherited)
+	if why != "" {
+		im.notef(path, imp.Lossy, "flag --%s %s; renamed to --%s", names[0], why, name)
+	}
+	if shadowed != "" {
+		im.notef(path, imp.Lossy, walk.ShadowNote, name, shadowed, name)
 	}
 	what := "--" + name
 	rf := &imp.Flag{Name: name, Identifiers: im.identifiers(append([]string{name}, names[1:]...), path, name)}
+	im.orig[rf] = names[0]
 	placeholder := ""
 	if u, ok := f.(usageFlag); ok {
 		usage := u.GetUsage()
@@ -374,7 +391,7 @@ func defaultValue(v reflect.Value) any {
 
 // flagGroups maps c's mutually exclusive groups. A group whose options are single flags is
 // rotini's mutually_exclusive, or one_of when urfave/cli requires one of them.
-func (im *importer) flagGroups(c *cli.Command, path string, names map[cli.Flag]string) []*imp.FlagGroup {
+func (im *importer) flagGroups(c *cli.Command, path string, names map[any]string) []*imp.FlagGroup {
 	var out []*imp.FlagGroup
 	for _, g := range c.MutuallyExclusiveFlags {
 		fg := &imp.FlagGroup{Kind: "mutually_exclusive"}
@@ -387,7 +404,7 @@ func (im *importer) flagGroups(c *cli.Command, path string, names map[cli.Flag]s
 				single = false
 				break
 			}
-			if n, ok := names[opt[0]]; ok {
+			if n, ok := names[flagKey(opt[0])]; ok {
 				fg.Flags = append(fg.Flags, n)
 			}
 		}

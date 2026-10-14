@@ -10,9 +10,11 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"go/version"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -216,7 +218,9 @@ func Check(t *testing.T, golden, fixture, pkg string, src TestFile) {
 	if after := Snapshot(t, dir); after != before {
 		t.Fatalf("the import changed the fixture's files")
 	}
-	if res.Source.Importer == "" {
+	// Go before 1.27 records no module versions in a test binary, and the importer here is a
+	// local directory, so its version is not in the source file's path either.
+	if res.Source.Importer == "" && version.Compare(runtime.Version(), "go1.27") >= 0 {
 		t.Fatal("the description does not name the importer's version")
 	}
 	Normalize(res, dir)
@@ -269,4 +273,81 @@ func diff(want, got string) string {
 		}
 	}
 	return b.String()
+}
+
+// Download fetches module@version and returns a writable copy of it. The network corpus
+// imports a program from there, as its own main module: go refuses an overlay inside the
+// module cache.
+func Download(t *testing.T, module string) string {
+	t.Helper()
+	var info struct {
+		Dir   string `json:"Dir"`
+		Error string `json:"Error"`
+	}
+	if err := json.Unmarshal([]byte(goCmd(t, t.TempDir(), "mod", "download", "-json", module)), &info); err != nil {
+		t.Fatal(err)
+	}
+	if info.Error != "" || info.Dir == "" {
+		t.Fatalf("go mod download %s: %s", module, info.Error)
+	}
+	dst := t.TempDir()
+	err := filepath.WalkDir(info.Dir, func(p string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(info.Dir, p)
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return os.MkdirAll(filepath.Join(dst, rel), 0o755)
+		}
+		if !d.Type().IsRegular() {
+			return nil
+		}
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(filepath.Join(dst, rel), b, 0o600)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return dst
+}
+
+// Network skips t unless ROTINI_IMPORT_NETWORK=1: the network corpus downloads the programs
+// it imports.
+func Network(t *testing.T) {
+	t.Helper()
+	if os.Getenv("ROTINI_IMPORT_NETWORK") != "1" {
+		t.Skip("set ROTINI_IMPORT_NETWORK=1 to import the pinned real programs")
+	}
+	HasGo(t)
+}
+
+// Baseline fails t when a count in got is more than 10% away from want's. With -update it
+// first rewrites testdata/golden/network-<name>.notes.txt, the notes the baseline was read
+// from.
+func Baseline(t *testing.T, name string, res *imp.Result, want imp.Stats) {
+	t.Helper()
+	if *Update {
+		Golden(t, "network-"+name+".notes.txt", []byte(NotesText(res)))
+	}
+	got := res.Stats()
+	for _, m := range []struct {
+		what      string
+		got, want int
+	}{
+		{"commands", got.Commands, want.Commands},
+		{"flags", got.Flags, want.Flags},
+		{"lossy notes", got.Lossy, want.Lossy},
+		{"unsupported notes", got.Unsupported, want.Unsupported},
+		{"info notes", got.Info, want.Info},
+	} {
+		if tol := (m.want + 9) / 10; m.got < m.want-tol || m.got > m.want+tol {
+			t.Errorf("%s: %d, baseline %d (±%d)", m.what, m.got, m.want, tol)
+		}
+	}
 }

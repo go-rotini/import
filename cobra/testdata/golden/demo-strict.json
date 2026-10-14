@@ -234,7 +234,6 @@
         ],
         "summary": "Deploy a service",
         "examples": [
-          "# deploy the api",
           "acme deploy api --replicas 3",
           "acme deploy web --set image.tag=v2"
         ],
@@ -790,6 +789,11 @@
     },
     {
       "path": "acme deploy",
+      "level": "lossy",
+      "msg": "comment lines in the examples dropped, since a rotini example is a command line only: [\"deploy the api\"]"
+    },
+    {
+      "path": "acme deploy",
       "level": "unsupported",
       "msg": "SuggestFor [push] dropped: rotini makes no suggestions unless the program asks for them"
     },
@@ -866,7 +870,7 @@
     {
       "path": "acme",
       "level": "info",
-      "msg": "flags and commands added inside PersistentPreRun, Run, an OnInitialize function or a plugin loader are not in the walked tree and were not imported"
+      "msg": "flags and commands added inside a hook (PersistentPreRun, PreRun, Run), an OnInitialize function or a plugin loader are not in the walked tree and were not imported"
     }
   ],
   "hooks": [

@@ -1,0 +1,87 @@
+[unsupported] woodpecker-cli: Suggest dropped: rotini makes no suggestions unless the program asks for them
+[lossy] woodpecker-cli: ConfigureShellCompletionCommand go.woodpecker-ci.org/woodpecker/v3/cmd/cli.newApp.func1: its changes to the completion command were not imported
+[info] woodpecker-cli: Version "dev": urfave/cli's version flag is kept as -v/--version; the version string belongs in the build (ldflags) or the root hook
+[info] woodpecker-cli admin log-level: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli admin org ls: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli admin registry add: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli admin registry rm: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli admin registry ls: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli admin registry show: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli admin registry update: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli admin secret add: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli admin secret rm: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli admin secret ls: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli admin secret show: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli admin secret update: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli admin user add: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli admin user ls: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli admin user rm: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli admin user show: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli context list: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli context use: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli context delete: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli context rename: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli decode-base64: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] woodpecker-cli exec: --backend-no-proxy reads the environment variable "no_proxy", which is not a valid rotini variable name; it was dropped
+[lossy] woodpecker-cli exec: --backend-http-proxy reads the environment variable "http_proxy", which is not a valid rotini variable name; it was dropped
+[lossy] woodpecker-cli exec: --backend-https-proxy reads the environment variable "https_proxy", which is not a valid rotini variable name; it was dropped
+[info] woodpecker-cli exec: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli info: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli lint: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli org registry add: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli org registry rm: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli org registry ls: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli org registry show: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli org registry update: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli org secret add: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli org secret rm: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli org secret ls: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli org secret show: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli org secret update: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli pipeline approve: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli pipeline create: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli pipeline decline: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli pipeline deploy: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli pipeline kill: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli pipeline last: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] woodpecker-cli pipeline ls: --before parses times with the layouts [2006-01-02T15:04:05Z07:00]: declare them as layout:
+[lossy] woodpecker-cli pipeline ls: --after parses times with the layouts [2006-01-02T15:04:05Z07:00]: declare them as layout:
+[info] woodpecker-cli pipeline ls: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli pipeline log purge: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli pipeline log show: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli pipeline ps: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli pipeline purge: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli pipeline queue: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli pipeline show: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli pipeline start: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli pipeline stop: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli repo add: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli repo chown: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli repo cron add: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli repo cron rm: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli repo cron ls: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli repo cron show: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli repo cron update: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli repo ls: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli repo registry add: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli repo registry rm: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli repo registry ls: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli repo registry show: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli repo registry update: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli repo rm: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli repo repair: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli repo secret add: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli repo secret rm: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli repo secret ls: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli repo secret show: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli repo secret update: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli repo show: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli repo sync: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli repo update: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli setup: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] woodpecker-cli update: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] woodpecker-cli completion: urfave/cli's completion command is imported in the shape rotini seeds, one command with a shell argument, where urfave/cli's pwsh is powershell
+[lossy] woodpecker-cli exec: --backend-local-temp-dir: the default "<temp>/" holds the temporary directory of the machine the import ran on, so it was dropped; declare it with expand: or set it in the handler
+[info] woodpecker-cli: urfave/cli also answers "<command> help" on each command with sub-commands; rotini's help command is on the root only, so "help <command>" or --help reaches that help
+[info] woodpecker-cli: urfave/cli prints help for a command with no Action; rotini runs that command's handler, so make it print help
+imported 92 commands, 302 flags: 8 lossy, 1 unsupported, 77 info

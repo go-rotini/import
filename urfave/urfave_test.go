@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -63,6 +64,15 @@ func flagNamed(t *testing.T, c *imp.Command, name string) *imp.Flag {
 	}
 	t.Fatalf("%s has no flag %q", c.Name, name)
 	return nil
+}
+
+func noNote(t *testing.T, res *imp.Result, path, substr string) {
+	t.Helper()
+	for _, n := range res.Notes {
+		if n.Path == path && strings.Contains(n.Msg, substr) {
+			t.Fatalf("unexpected note on %q: %v", path, n)
+		}
+	}
 }
 
 func wantNote(t *testing.T, res *imp.Result, path string, level imp.Level, substr string) {
@@ -371,7 +381,7 @@ func TestFlagDetails(t *testing.T) {
 	if l := flagNamed(t, res.Command, "local"); l.Cascading {
 		t.Fatal("--local cascades")
 	}
-	wantNote(t, res, "app", imp.Info, "rotini also accepts a command's own flags after a sub-command name (app)")
+	noNote(t, res, "app", "own flags after a sub-command name")
 	if tok.Deprecated != "" {
 		wantNote(t, res, "app", imp.Info, "urfave/cli prints deprecation warnings itself")
 	}
@@ -558,4 +568,143 @@ func TestCommandNotes(t *testing.T) {
 		wantNote(t, res, "app", n.level, n.msg)
 	}
 	wantNote(t, res, "app run", imp.Lossy, "custom help template")
+}
+
+// valFlag is a flag stored by value whose struct cannot be compared.
+type valFlag struct {
+	Name  string
+	Extra []string
+}
+
+func (f valFlag) String() string                                { return f.Name }
+func (f valFlag) Get() any                                      { return nil }
+func (f valFlag) PreParse() error                               { return nil }
+func (f valFlag) PostParse() error                              { return nil }
+func (f valFlag) Set(string, string) error                      { return nil }
+func (f valFlag) Names() []string                               { return []string{f.Name} }
+func (f valFlag) IsSet() bool                                   { return false }
+func (f valFlag) Apply(any) error                               { return nil }
+func (f valFlag) TakesValue() bool                              { return true }
+func (f valFlag) IsDefaultVisible() bool                        { return true }
+func (f valFlag) GetDefaultText() string                        { return "" }
+func (f valFlag) TypeName() string                              { return "x" }
+func (f valFlag) GetValue() string                              { return "" }
+func (f valFlag) IsRequired() bool                              { return false }
+func (f valFlag) IsVisible() bool                               { return true }
+func (f valFlag) GetUsage() string                              { return "" }
+func (f valFlag) GetEnvVars() []string                          { return nil }
+func (f valFlag) GetCategory() string                           { return "" }
+func (f valFlag) IsLocal() bool                                 { return false }
+func (f valFlag) IsBoolFlag() bool                              { return false }
+func (f valFlag) Count() int                                    { return 0 }
+func (f valFlag) IsMultiValueFlag() bool                        { return false }
+func (f valFlag) PreParseOnly() bool                            { return false }
+func (f valFlag) RunAction(context.Context, *cli.Command) error { return nil }
+
+func TestUnhashableFlag(t *testing.T) {
+	root := &cli.Command{Name: "app", Flags: []cli.Flag{valFlag{Name: "x", Extra: []string{"a"}}}}
+	res := importTree(t, root, urfaveimport.Options{})
+	flagNamed(t, res.Command, "x")
+}
+
+type actions struct{ fail bool }
+
+func (a actions) run(context.Context, *cli.Command) error {
+	if a.fail {
+		return fmt.Errorf("failed")
+	}
+	return nil
+}
+
+func TestGroupThatRunsTakesArguments(t *testing.T) {
+	o := actions{}
+	build := func() *cli.Command {
+		return &cli.Command{Name: "app", Commands: []*cli.Command{
+			{Name: "grp", ArgsUsage: "[thing]", Action: o.run, Commands: []*cli.Command{{Name: "leaf", Action: action}}},
+			{Name: "plain", Commands: []*cli.Command{{Name: "leaf", Action: action}}},
+		}}
+	}
+	// urfave/cli runs the group's Action with words that name no sub-command.
+	var got []string
+	run := build()
+	run.Commands[0].Action = func(_ context.Context, c *cli.Command) error { got = c.Args().Slice(); return nil }
+	if err := run.Run(context.Background(), []string{"app", "grp", "extra"}); err != nil || !reflect.DeepEqual(got, []string{"extra"}) {
+		t.Fatalf("urfave/cli ran grp with %v, %v", got, err)
+	}
+
+	res := importTree(t, build(), urfaveimport.Options{})
+	var args []string
+	for _, a := range find(t, res, "app grp").Arguments {
+		args = append(args, a.Name+":"+a.Schema.Type)
+	}
+	if !reflect.DeepEqual(args, []string{"thing:string", "args:[]string"}) {
+		t.Fatalf("grp arguments %v", args)
+	}
+	if len(find(t, res, "app plain").Arguments) != 0 {
+		t.Fatal("a group with no Action took arguments")
+	}
+	wantNote(t, res, "app", imp.Info, `answers "<command> help"`)
+	found := false
+	for _, h := range res.Hooks {
+		if h.Path == "app grp" {
+			found = true
+			if h.Func != "github.com/go-rotini/import/urfave_test.actions.run" || !strings.HasSuffix(h.File, "urfave_test.go") || h.Line == 0 {
+				t.Fatalf("method value hook %+v", h)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("no hook for app grp")
+	}
+}
+
+func TestFlagNamesThatCollideOnceValid(t *testing.T) {
+	root := &cli.Command{Name: "app", Flags: []cli.Flag{
+		&cli.StringFlag{Name: "foo.bar"},
+		&cli.StringFlag{Name: "foo-bar"},
+	}}
+	res := importTree(t, root, urfaveimport.Options{})
+	flagNamed(t, res.Command, "foo-bar")
+	flagNamed(t, res.Command, "foo-bar-2")
+	wantNote(t, res, "app", imp.Lossy, "which another already has")
+}
+
+func TestRenamedFlagDoesNotShadowInherited(t *testing.T) {
+	root := &cli.Command{
+		Name:     "app",
+		Flags:    []cli.Flag{&cli.StringFlag{Name: "foo-bar"}},
+		Commands: []*cli.Command{{Name: "sub", Flags: []cli.Flag{&cli.StringFlag{Name: "foo.bar"}}}},
+	}
+	res := importTree(t, root, urfaveimport.Options{})
+	flagNamed(t, find(t, res, "app sub"), "foo-bar-2")
+	wantNote(t, res, "app sub", imp.Lossy, "would be --foo-bar, the name of an inherited flag")
+}
+
+func TestRootNamedFromArgs0(t *testing.T) {
+	testName := filepath.Base(os.Args[0])
+	prog := strings.TrimSuffix(strings.TrimSuffix(testName, ".exe"), ".test")
+	if prog == strings.TrimSuffix(testName, ".exe") {
+		t.Skip("not running as a go test binary")
+	}
+	root := &cli.Command{Name: testName, Usage: "the " + testName + " tool", Commands: []*cli.Command{{Name: "sub", Action: action}}}
+	res := importTree(t, root, urfaveimport.Options{})
+	if res.Command.Name != prog || res.Command.Summary != "the "+prog+" tool" {
+		t.Errorf("root %q, summary %q", res.Command.Name, res.Command.Summary)
+	}
+	find(t, res, prog+" sub")
+	wantNote(t, res, prog, imp.Info, "is the test binary's name, which the program read from os.Args[0]")
+
+	// The full path, as os.Args[0] holds it, names the root after the binary alone.
+	root = &cli.Command{Name: os.Args[0], Usage: "the " + os.Args[0] + " tool", Commands: []*cli.Command{{Name: "sub", Action: action}}}
+	res = importTree(t, root, urfaveimport.Options{})
+	if res.Command.Name != prog || res.Command.Summary != "the "+prog+" tool" {
+		t.Errorf("root %q, summary %q", res.Command.Name, res.Command.Summary)
+	}
+	find(t, res, prog+" sub")
+	wantNote(t, res, prog, imp.Info, "the root's name is the test binary's path, which the program read from os.Args[0]")
+	for _, n := range res.Notes {
+		if strings.Contains(n.Msg, filepath.Dir(os.Args[0])) {
+			t.Errorf("note quotes the test binary's path: %s", n.Msg)
+		}
+	}
 }

@@ -43,6 +43,10 @@ type importer struct {
 	missing []string
 	// groupNodes counts the nodes that declare flags in each xor group and "and" group.
 	groupNodes map[string]int
+	// inherited maps the imported names of the cascading flags the node being walked
+	// inherits to their Kong names; orig holds each imported flag's Kong name.
+	inherited map[string]string
+	orig      map[*imp.Flag]string
 	// facts gathered for the once-per-import notes
 	branchNoRun bool
 }
@@ -60,7 +64,7 @@ func FromKong(grammar any, opts Options) (res *imp.Result, err error) {
 			res, err = nil, fmt.Errorf("kong import: building the Kong model panicked: %v", r)
 		}
 	}()
-	im := &importer{opts: opts, groupNodes: map[string]int{}}
+	im := &importer{opts: opts, groupNodes: map[string]int{}, orig: map[*imp.Flag]string{}}
 	name := walk.CommandName(programName(opts.Name))
 	app, err := im.build(grammar, name)
 	if err != nil {
@@ -69,9 +73,12 @@ func FromKong(grammar any, opts Options) (res *imp.Result, err error) {
 	im.app = app
 	im.countGroups(app.Model.Node)
 	rc := im.command(app.Model.Node, name, "")
+	m := walk.NewMachine(name)
+	m.ScrubNotes(im.notes)
+	m.Scrub(rc, name, func(p string, level imp.Level, msg string) { im.notef(p, level, "%s", msg) })
 	im.programNotes(name)
 	return &imp.Result{
-		Source:  walk.Source("kong", kongModule),
+		Source:  walk.Source("kong", kongModule, kong.New),
 		Command: rc,
 		Notes:   im.notes,
 		Hooks:   im.hooks,
@@ -164,12 +171,20 @@ func (im *importer) command(n *kong.Node, name, parent string) *imp.Command {
 		im.branchNoRun = true
 	}
 
+	inherited := im.inherited
+	im.inherited = walk.Cascade(inherited, rc.Flags, im.orig)
+	defer func() { im.inherited = inherited }()
+	names := walk.Names{}
 	for _, child := range n.Children {
-		childName := walk.CommandName(child.Name)
+		orig := child.Name
 		if child.Type == kong.ArgumentNode {
-			childName = walk.CommandName(walk.ArgName(child.Name))
+			orig = walk.ArgName(child.Name)
 		}
-		if childName != child.Name {
+		childName, why := names.Rename(orig)
+		switch {
+		case why != "":
+			im.notef(walk.JoinPath(path, childName), imp.Lossy, "command name %q %s; renamed to %q", child.Name, why, childName)
+		case childName != child.Name:
 			im.notef(walk.JoinPath(path, childName), imp.Lossy, "command name %q is not a valid rotini name; renamed to %q", child.Name, childName)
 		}
 		rc.Commands = append(rc.Commands, im.command(child, childName, path))

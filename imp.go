@@ -24,9 +24,10 @@ type Result struct {
 type Source struct {
 	// Framework is the framework's short name, such as "cobra".
 	Framework string `json:"framework"`
-	// Version is the framework module's version in the imported program, when known.
+	// Version is the framework module's version in the imported program, when known. A
+	// module replaced by a local directory has none under Go releases before 1.27.
 	Version string `json:"version,omitempty"`
-	// Importer is the importer module's version, when known.
+	// Importer is the importer module's version, when known, with the same limit.
 	Importer string `json:"importer,omitempty"`
 }
 
@@ -132,11 +133,11 @@ type Level string
 
 // The note levels.
 const (
-	// Lossy: carried across, but something about it changed or was lost.
+	// Lossy means carried across, but something about it changed or was lost.
 	Lossy Level = "lossy"
-	// Unsupported: dropped, because rotini has no equivalent.
+	// Unsupported means dropped, because rotini has no equivalent.
 	Unsupported Level = "unsupported"
-	// Info: carried across faithfully, with something worth knowing.
+	// Info means carried across faithfully, with something worth knowing.
 	Info Level = "info"
 )
 
@@ -164,6 +165,7 @@ type Hook struct {
 	Func string `json:"func,omitempty"`
 	// File and Line locate the function. File is absolute for code in the program's own
 	// module and module-cache relative ("example.com/x@v1.2.3/cmd.go") for a dependency.
+	// Both are empty when a method value's method cannot be located.
 	File string `json:"file,omitempty"`
 	Line int    `json:"line,omitempty"`
 }

@@ -1,0 +1,66 @@
+[unsupported] gitea: DefaultCommand "web" dropped: rotini runs no command unless it is named; have this command's handler call its code
+[info] gitea web: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea serv: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea hook pre-receive: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea hook update: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea hook post-receive: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea hook proc-receive: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea keys: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea dump: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[unsupported] gitea admin user create: a mutually exclusive group has an option of several flags: a rotini group names single flags, so it was dropped; check it in the handler
+[info] gitea admin user create: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea admin user list: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea admin user change-password: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea admin user delete: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea admin user generate-access-token: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea admin user must-change-password: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea admin user disable-2fa: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea admin user change-type: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea admin repo-sync-releases: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea admin regenerate hooks: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea admin regenerate keys: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea admin auth add-oauth: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea admin auth update-oauth: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea admin auth add-ldap: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea admin auth update-ldap: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea admin auth add-ldap-simple: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea admin auth update-ldap-simple: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea admin auth add-smtp: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea admin auth update-smtp: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea admin auth list: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea admin auth delete: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea admin sendmail: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea migrate: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea doctor check: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] gitea doctor recreate-table: <tables> after the variadic <table> in "[TABLE]... : (TABLEs to recreate - leave blank for all)" dropped: a variadic argument is the last; the handler must take them from its end
+[info] gitea doctor convert: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea manager shutdown: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea manager restart: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea manager reload-templates: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea manager flush-queues: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea manager logging pause: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea manager logging resume: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea manager logging release-and-reopen: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea manager logging log-sql: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea manager processes: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea embedded list: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea embedded view: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea embedded extract: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea migrate-storage: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea dump-repo: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea restore-repo: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea actions generate-runner-token: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea config edit-ini: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea cert: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea generate secret INTERNAL_TOKEN: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea generate secret JWT_SECRET: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea generate secret SECRET_KEY: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea generate ssh key: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea generate ssh host-keys: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[info] gitea docs: no Arguments declared: urfave/cli accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] gitea completion: urfave/cli's completion command is imported in the shape rotini seeds, one command with a shell argument, where urfave/cli's pwsh is powershell
+[lossy] gitea dump: --tempdir: the default "<temp>/" holds the temporary directory of the machine the import ran on, so it was dropped; declare it with expand: or set it in the handler
+[info] gitea: gitea.dev/cmd.PrepareSubcommandWithGlobalFlags.func1 is the Before of 14 commands: it is a closure one function made for each, so the code to port is in the function each command passed to it
+[info] gitea: urfave/cli also answers "<command> help" on each command with sub-commands; rotini's help command is on the root only, so "help <command>" or --help reaches that help
+[info] gitea: urfave/cli prints help for a command with no Action; rotini runs that command's handler, so make it print help
+imported 75 commands, 338 flags: 3 lossy, 2 unsupported, 60 info

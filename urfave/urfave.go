@@ -37,10 +37,15 @@ type importer struct {
 	sep   string
 	notes []imp.Note
 	hooks []imp.Hook
+	// inherited maps the imported names of the cascading flags the command being walked
+	// inherits to their urfave/cli names; orig holds each imported flag's urfave/cli name.
+	inherited map[string]string
+	orig      map[*imp.Flag]string
 	// facts gathered for the once-per-import notes
-	deprecations     bool
-	noAction         bool
-	parentLocalFlags []string
+	deprecations bool
+	noAction     bool
+	groupHelp    bool   // a command below the root has sub-commands
+	testRoot     string // the root's Name when it is the test binary's name, else ""
 }
 
 // FromURFave imports the tree that cmd belongs to, starting at its root. It reads the tree
@@ -57,16 +62,18 @@ func FromURFave(cmd *cli.Command, opts Options) (res *imp.Result, err error) {
 		}
 	}()
 	root := cmd.Root()
-	im := &importer{opts: opts, root: root, sep: ","}
+	im := &importer{opts: opts, root: root, sep: ",", orig: map[*imp.Flag]string{}}
 	name := root.Name
 	if name == "" {
 		name = programName(opts.Name)
+	} else if prog, ok := walk.ProgramName(name); ok {
+		im.testRoot, name = name, prog
 	}
 	im.separator(walk.CommandName(name))
 	rc := im.command(root, walk.CommandName(name), "", name)
-	im.programNotes(rc.Name)
+	im.programNotes(rc)
 	return &imp.Result{
-		Source:  walk.Source("urfave", cliModule),
+		Source:  walk.Source("urfave", cliModule, cli.HandleExitCoder),
 		Command: rc,
 		Notes:   im.notes,
 		Hooks:   im.hooks,
@@ -137,12 +144,17 @@ func fieldFunc(p any, name string) any {
 	return nil
 }
 
-func isCLIFunc(f any) bool { return strings.HasPrefix(walk.FuncName(f), cliPrefix) }
+// isCLIFunc reports whether f is urfave/cli's own code. A closure can be named after the
+// function it was inlined into, so a function written in urfave/cli's source directory
+// counts too.
+func isCLIFunc(f any) bool {
+	return strings.HasPrefix(walk.FuncName(f), cliPrefix) || walk.DefinedBeside(f, cli.HandleExitCoder)
+}
 
 func (im *importer) command(c *cli.Command, name, parent, origName string) *imp.Command {
 	isRoot := parent == ""
 	path := walk.JoinPath(parent, name)
-	if name != origName {
+	if walk.CommandName(origName) != origName {
 		im.notef(path, imp.Lossy, "command name %q is not a valid rotini name; renamed to %q", origName, name)
 	}
 	rc := &imp.Command{
@@ -187,9 +199,19 @@ func (im *importer) command(c *cli.Command, name, parent, origName string) *imp.
 	if rc.Passthrough {
 		return rc
 	}
+	inherited := im.inherited
+	im.inherited = walk.Cascade(inherited, rc.Flags, im.orig)
+	defer func() { im.inherited = inherited }()
+	names := walk.Names{}
 	for _, sub := range subs {
-		subName := walk.CommandName(sub.Name)
+		subName, why := names.Rename(sub.Name)
+		if why != "" && subName != walk.CommandName(sub.Name) {
+			im.notef(walk.JoinPath(path, subName), imp.Lossy, "command name %q %s; renamed to %q", sub.Name, why, subName)
+		}
 		rc.Commands = append(rc.Commands, im.command(sub, subName, path, sub.Name))
+	}
+	if !isRoot && len(subs) > 0 {
+		im.groupHelp = true
 	}
 	if isRoot {
 		rc.Commands = append(rc.Commands, im.builtinCommands(c, path)...)
@@ -334,15 +356,25 @@ func (im *importer) passthrough(path string, rc *imp.Command, hasSubs bool) {
 }
 
 // programNotes adds the notes that concern the whole import, once each.
-func (im *importer) programNotes(path string) {
+func (im *importer) programNotes(rc *imp.Command) {
+	path := rc.Name
+	m := walk.NewMachine(path)
+	if im.testRoot != "" {
+		m.RenamedRoot(im.testRoot)
+	}
+	m.ScrubNotes(im.notes)
+	m.Scrub(rc, path, func(p string, level imp.Level, msg string) { im.notef(p, level, "%s", msg) })
+	for _, msg := range walk.SharedHooks(im.hooks) {
+		im.notef(path, imp.Info, "%s", m.ScrubNote(msg))
+	}
+	if im.groupHelp {
+		im.notef(path, imp.Info, "urfave/cli also answers \"<command> help\" on each command with sub-commands; rotini's help command is on the root only, so \"help <command>\" or --help reaches that help")
+	}
 	if im.deprecations {
 		im.notef(path, imp.Info, "urfave/cli prints deprecation warnings itself; in rotini a hook reads rotini.Deprecations and prints them")
 	}
 	if im.noAction {
 		im.notef(path, imp.Info, "urfave/cli prints help for a command with no Action; rotini runs that command's handler, so make it print help")
-	}
-	if len(im.parentLocalFlags) > 0 {
-		im.notef(path, imp.Info, "rotini also accepts a command's own flags after a sub-command name (%s)", strings.Join(im.parentLocalFlags, ", "))
 	}
 	if walk.DependsOn("github.com/urfave/cli-altsrc/v3") {
 		im.notef(path, imp.Lossy, "cli-altsrc is linked in: values read from configuration files were not imported; declare config_files and key: on inputs by hand")

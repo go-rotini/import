@@ -53,7 +53,9 @@ var envName = regexp.MustCompile(`^[A-Z_][A-Z0-9_]*$`)
 func (im *importer) flags(n *kong.Node, path string) ([]*imp.Flag, []*imp.FlagGroup) {
 	cascading := len(n.Children) > 0
 	out := make([]*imp.Flag, 0, len(n.Flags))
+	var extra []*imp.Flag        // the negated forms of non-bool negatable flags
 	names := map[string]string{} // Kong flag name -> imported name
+	used := walk.Names{}
 	for _, f := range n.Flags {
 		var rf *imp.Flag
 		switch {
@@ -63,12 +65,29 @@ func (im *importer) flags(n *kong.Node, path string) ([]*imp.Flag, []*imp.FlagGr
 			rf = builtinFlag(f, "version", cascading)
 			im.notef(path, imp.Info, "%s prints the Kong variable ${version}; the version string belongs in the build (ldflags) or the root hook", strings.Join(rf.Identifiers, "/"))
 		default:
-			rf = im.flag(f, path, cascading)
+			var negated *imp.Flag
+			rf, negated = im.flag(f, path, cascading, used)
+			if negated != nil {
+				extra = append(extra, negated)
+			}
 		}
 		names[f.Name] = rf.Name
 		out = append(out, rf)
 	}
-	return out, im.flagGroups(n, path, out, names)
+	groups := im.flagGroups(n, path, out, names)
+	for _, nf := range extra {
+		name, why, shadowed := used.RenameFlag(nf.Name, im.inherited)
+		im.orig[nf] = nf.Name
+		if why != "" {
+			im.notef(path, imp.Lossy, "the flag for %s %s; it was named --%s", nf.Identifiers[0], why, name)
+		}
+		if shadowed != "" {
+			im.notef(path, imp.Lossy, walk.ShadowNote, name, shadowed, name)
+		}
+		nf.Name = name
+		out = append(out, nf)
+	}
+	return out, groups
 }
 
 func builtinFlag(f *kong.Flag, kind string, cascading bool) *imp.Flag {
@@ -89,12 +108,18 @@ func builtinFlag(f *kong.Flag, kind string, cascading bool) *imp.Flag {
 	}
 }
 
-func (im *importer) flag(f *kong.Flag, path string, cascading bool) *imp.Flag {
-	name := walk.CommandName(f.Name)
-	if name != f.Name {
-		im.notef(path, imp.Lossy, "flag --%s is not a valid rotini name; renamed to --%s", f.Name, name)
+// flag maps one flag. A negatable flag that is not a bool also gives negated, a bool flag of
+// its own for the negated form, since a rotini negatable flag is a bool.
+func (im *importer) flag(f *kong.Flag, path string, cascading bool, used walk.Names) (rf, negated *imp.Flag) {
+	name, why, shadowed := used.RenameFlag(f.Name, im.inherited)
+	if why != "" {
+		im.notef(path, imp.Lossy, "flag --%s %s; renamed to --%s", f.Name, why, name)
 	}
-	rf := &imp.Flag{Name: name, Summary: text(f.Help), Cascading: cascading, Hidden: f.Hidden}
+	if shadowed != "" {
+		im.notef(path, imp.Lossy, walk.ShadowNote, name, shadowed, name)
+	}
+	rf = &imp.Flag{Name: name, Summary: text(f.Help), Cascading: cascading, Hidden: f.Hidden}
+	im.orig[rf] = f.Name
 	if f.Group != nil {
 		rf.Group = text(f.Group.Title)
 	}
@@ -125,9 +150,13 @@ func (im *importer) flag(f *kong.Flag, path string, cascading bool) *imp.Flag {
 		s.Placeholder = text(f.PlaceHolder)
 	}
 	if neg := negatable(f); neg != "" {
-		if neg == "--no-"+f.Name {
+		switch {
+		case s.Type != "bool":
+			negated = negatedFlag(rf, neg)
+			im.notef(path, imp.Lossy, "%s is negatable but its type is %s, and a rotini negatable flag is a bool: %s was imported as a bool flag of its own; when it is given, set %s to its negated value in the handler", what, s.Type, neg, what)
+		case neg == "--no-"+f.Name:
 			s.Negatable = true
-		} else {
+		default:
 			s.Negatable = neg
 		}
 	}
@@ -145,7 +174,20 @@ func (im *importer) flag(f *kong.Flag, path string, cascading bool) *imp.Flag {
 		s.Default = nil
 	}
 	im.valueHooks(f.Value, path, what)
-	return rf
+	return rf, negated
+}
+
+// negatedFlag is the bool flag that stands for the negated form neg of the non-bool flag rf.
+func negatedFlag(rf *imp.Flag, neg string) *imp.Flag {
+	return &imp.Flag{
+		Name:        walk.CommandName(neg),
+		Summary:     "negated form of --" + rf.Name,
+		Identifiers: []string{neg},
+		Group:       rf.Group,
+		Cascading:   rf.Cascading,
+		Hidden:      rf.Hidden,
+		Schema:      &imp.Schema{Type: "bool"},
+	}
 }
 
 // negatable returns the negated identifier of a negatable flag. Kong's tag holds a bool in
@@ -173,6 +215,14 @@ func (im *importer) schema(v *kong.Value, path, what string, isFlag bool) *imp.S
 	switch tagType {
 	case "counter":
 		s.Type = "count"
+		if v.HasDefault && !hasPlaceholder(v.Default) {
+			switch n, err := strconv.ParseInt(v.Default, 10, 64); {
+			case err != nil:
+				im.notef(path, imp.Lossy, "%s: the counter default %q is not a decimal whole number, so it was dropped", what, v.Default)
+			case n != 0:
+				s.Default = n
+			}
+		}
 		return s
 	case "", "path", "existingfile", "existingdir", "filecontent":
 	default:
@@ -317,20 +367,14 @@ func goType(t reflect.Type) (string, bool) {
 func defaultValue(kind, base, def, sep, mapSep string) any {
 	switch kind {
 	case "slice":
-		items := []string{def}
-		if sep != "" {
-			items = strings.Split(def, sep)
-		}
+		items := splitEscaped(def, sep)
 		out := make([]any, 0, len(items))
 		for _, it := range items {
 			out = append(out, scalarValue(base, it))
 		}
 		return out
 	case "map":
-		items := []string{def}
-		if mapSep != "" {
-			items = strings.Split(def, mapSep)
-		}
+		items := splitEscaped(def, mapSep)
 		m := map[string]any{}
 		for _, kv := range items {
 			k, v, _ := strings.Cut(kv, "=")
@@ -464,4 +508,14 @@ func (im *importer) flagGroups(n *kong.Node, path string, flags []*imp.Flag, nam
 		out = append(out, fg)
 	}
 	return out
+}
+
+// splitEscaped splits s on sep as Kong does, honoring a backslash before sep. An empty sep
+// keeps s whole.
+func splitEscaped(s, sep string) []string {
+	if sep == "" {
+		return []string{s}
+	}
+	r, _ := utf8.DecodeRuneInString(sep)
+	return kong.SplitEscaped(s, r)
 }

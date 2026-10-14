@@ -18,6 +18,7 @@ One module holds the description and one package per framework:
 - Names arguments from the usage line (Cobra's `Use`, urfave/cli's `ArgsUsage`) where the framework declares none, sanitised to valid names and de-duplicated
 - Reports what it cannot carry across exactly, one note per item, graded `lossy`, `unsupported` or `info`
 - Points at every run hook with its file and line, mapped to the matching rotini handler hook
+- Leaves out what the program worked out on the importing machine: a default under the home, cache, configuration, per-user temporary or working directory, or holding the host name, is dropped with a note; in help text, with a note, and in notes the same paths are written as tokens (`~/.app.yaml`); a default under a shared temporary directory such as `/tmp` is kept with a note; and the test binary's name read from `os.Args[0]` is replaced by the program's, including a root named after it or after the binary's full path
 - A versioned JSON description (`"format": "rotini-import/1"`); `Read` refuses a major version it does not know
 
 ## Installation
@@ -29,6 +30,12 @@ go get github.com/go-rotini/import
 ```
 
 Requires Go 1.22 or later, and Cobra 1.6, Kong 0.9 or urfave/cli 3.1 or later.
+
+A test binary built by Go before 1.27 records no dependencies. There the framework's and the
+importer's versions are read from the module cache directories their source files are in, so a
+module replaced by a local directory has no version in the description, and the notes for a
+linked configuration or completion module (Viper, urfave/cli-altsrc, Kong's loaders, kongplete)
+are not written.
 
 ## Quick Start
 
@@ -65,14 +72,14 @@ func main() {
 
 | Cobra | rotini | |
 |---|---|---|
-| `Name()`, `Short`, `Long`, `Aliases`, `Hidden`, `Deprecated`, `Example` | `name`, `summary`, `description`, `aliases`, `hidden`, `deprecated`, `examples` | examples are split into lines |
+| `Name()`, `Short`, `Long`, `Aliases`, `Hidden`, `Deprecated`, `Example` | `name`, `summary`, `description`, `aliases`, `hidden`, `deprecated`, `examples` | examples are split into command lines, joining continued lines and open quotes; comment lines are noted |
 | `GroupID` and the parent's group title | `group` | |
 | the root's display-name annotation | `display_name` | |
-| `PersistentFlags()` / local flags | flags with / without `cascading` | rotini also accepts a command's own flags after a sub-command name |
+| `PersistentFlags()` / local flags | flags with / without `cascading` | |
 | pflag types, `DefValue`, `NoOptDefVal` | `type`, `default`, `implicit_value` | `time` layouts, custom `pflag.Value` and callback flags are lossy |
 | required, filename and dirname annotations | `required`, `complete: {kind: file \| directory}` | a required flag's default is dropped |
 | the three flag-group annotations | `required_together`, `at_least_one`, `mutually_exclusive`; the last two over one set become `one_of` | groups mixing a command's own and inherited flags are dropped |
-| stock `Args` validators | argument counts | custom validators are probed; their value checks are lost |
+| `Args` validators | argument counts, found by calling the validator with placeholder arguments | a custom validator's value checks are lost |
 | `ValidArgs` | an enum on the first argument, with descriptions | |
 | `ValidArgsFunction`, flag completion functions | `complete: {kind: none}` for `NoFileCompletions` | other functions are noted for reimplementing |
 | `DisableFlagParsing` | a passthrough command | |
@@ -80,6 +87,8 @@ func main() {
 | run hooks | hook pointers (file and line) | the code itself is ported by hand |
 
 Flags or commands that a program registers lazily (inside a run hook, an `OnInitialize` function, a plugin loader or a wrapper around `Execute`) are not in the tree when it is walked, so they are not imported. Neither are viper bindings: when viper is linked in, the import says so.
+
+The import runs some of the program's own code: each `Args` validator is called with placeholder arguments to find how many it accepts, and `FixedCompletions` functions are called to read their values. A custom validator is called 9 times (0 to 8 arguments), and up to 20 times when it accepts 8: then it is tried with 1000, and the largest count it accepts is found by halving. A validator with side effects (one that reads files or records telemetry) has them during the import, once per call.
 
 ### Kong
 
@@ -91,7 +100,7 @@ Flags or commands that a program registers lazily (inside a run hook, an `OnInit
 | Go field types, `time.Duration`, `time.Time`, `*url.URL`, IP types, slices and maps | `type` | a custom `Mapper`, `MapperValue` or unmarshaler is lossy |
 | `default`, `enum`, `required`, `placeholder`, `env` | `default`, `enum`, `required`, `placeholder`, `variable` | a required flag's default is dropped |
 | `type:"counter"`, `existingfile`, `existingdir`, `path` | `count`, `existingfile`, `existingdir`, `complete: {kind: file}` | `path`'s `~` expansion is lossy |
-| `negatable` | `negatable` | |
+| `negatable` | `negatable` | on a non-bool flag, the negated form becomes a bool flag of its own |
 | `sep`, `mapsep` | `separator` | |
 | `xor`, `and` | `mutually_exclusive` (`one_of` when required), `required_together` | groups spanning commands are dropped |
 | positional arguments; a slice takes the rest | arguments | |

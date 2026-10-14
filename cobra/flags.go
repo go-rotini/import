@@ -40,7 +40,7 @@ func (im *importer) flags(c *cobra.Command, path string) ([]*imp.Flag, []*imp.Fl
 	var help, version *imp.Flag
 	var out []*imp.Flag
 	names := map[string]string{} // pflag name -> imported name, for this command's own flags
-	locals := 0
+	used := walk.Names{}
 	add := func(f *pflag.Flag, cascading bool) {
 		switch {
 		case f.Name == "help" && isRoot:
@@ -54,18 +54,12 @@ func (im *importer) flags(c *cobra.Command, path string) ([]*imp.Flag, []*imp.Fl
 				c.Version, strings.Join(version.Identifiers, "/"))
 			return
 		}
-		rf := im.flag(c, path, f, cascading)
+		rf := im.flag(c, path, f, cascading, used)
 		names[f.Name] = rf.Name
-		if !cascading {
-			locals++
-		}
 		out = append(out, rf)
 	}
 	c.PersistentFlags().VisitAll(func(f *pflag.Flag) { add(f, true) })
 	c.LocalNonPersistentFlags().VisitAll(func(f *pflag.Flag) { add(f, false) })
-	if locals > 0 && hasRealSubCommands(c) {
-		im.parentLocalFlags = append(im.parentLocalFlags, path)
-	}
 	if help != nil {
 		out = append([]*imp.Flag{help}, out...)
 		if c.Flags().ShorthandLookup("h") != nil && c.Flags().ShorthandLookup("h").Name != "help" {
@@ -97,12 +91,16 @@ func (im *importer) builtinFlag(f *pflag.Flag, kind string, cascading bool) *imp
 
 var backquoted = regexp.MustCompile("`([^`]+)`")
 
-func (im *importer) flag(c *cobra.Command, path string, f *pflag.Flag, cascading bool) *imp.Flag {
-	name := walk.CommandName(f.Name)
-	if name != f.Name {
-		im.notef(path, imp.Lossy, "flag --%s is not a valid rotini name; renamed to --%s", f.Name, name)
+func (im *importer) flag(c *cobra.Command, path string, f *pflag.Flag, cascading bool, used walk.Names) *imp.Flag {
+	name, renamed, shadowed := used.RenameFlag(f.Name, im.inherited)
+	if renamed != "" {
+		im.notef(path, imp.Lossy, "flag --%s %s; renamed to --%s", f.Name, renamed, name)
+	}
+	if shadowed != "" {
+		im.notef(path, imp.Lossy, walk.ShadowNote, name, shadowed, name)
 	}
 	rf := &imp.Flag{Name: name, Cascading: cascading, Hidden: f.Hidden, Deprecated: f.Deprecated}
+	im.orig[rf] = f.Name
 	if f.Deprecated != "" {
 		im.deprecations = true
 	}
@@ -227,16 +225,44 @@ func (im *importer) implicitValue(path string, f *pflag.Flag, name, t string, s 
 	}
 }
 
-// zeroDefaults are DefValue strings that mean "no default": rotini leaves an unset input at
-// its zero value, as pflag does.
-var zeroDefaults = map[string]bool{
-	"": true, "false": true, "0": true, "0s": true, "[]": true, "<nil>": true,
-	"0.0": true, "map[]": true, "0001-01-01T00:00:00Z": true,
+// zeroDefault reports whether dv is how pflag writes the zero value of a flag of the type
+// t, which means "no default": rotini leaves an unset input at its zero value, as pflag
+// does. A type pflag does not declare may write its zero value any of these ways.
+func zeroDefault(t, dv string) bool {
+	if dv == "" {
+		return true
+	}
+	rt, known := pflagTypes[t]
+	switch {
+	case t == "time":
+		return dv == "0001-01-01T00:00:00Z"
+	case !known:
+		switch dv {
+		case "false", "0", "0s", "[]", "<nil>", "0.0", "map[]", "0001-01-01T00:00:00Z":
+			return true
+		}
+		return false
+	case strings.HasPrefix(rt.rotini, "[]") || strings.HasPrefix(rt.rotini, "map"):
+		return dv == "[]" || dv == "map[]"
+	}
+	switch rt.rotini {
+	case "bool":
+		return dv == "false"
+	case "count", "int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64":
+		return dv == "0"
+	case "float32", "float64":
+		return dv == "0" || dv == "0.0"
+	case "duration":
+		return dv == "0s"
+	case "ip", "cidr":
+		return dv == "<nil>"
+	}
+	return false
 }
 
 // defaultValue turns pflag's DefValue string into a default, typed for the flag.
 func defaultValue(t, dv string) any {
-	if zeroDefaults[dv] {
+	if zeroDefault(t, dv) {
 		return nil
 	}
 	rt := pflagTypes[t].rotini
@@ -382,7 +408,8 @@ func (im *importer) completion(c *cobra.Command, path, what string, fn completio
 	switch {
 	case name == "github.com/spf13/cobra.NoFileCompletions":
 		s.Complete = &imp.Complete{Kind: "none"}
-	case strings.HasPrefix(name, "github.com/spf13/cobra.FixedCompletions"):
+	case strings.HasPrefix(name, "github.com/spf13/cobra.FixedCompletions") ||
+		(strings.Contains(name, ".FixedCompletions.func") && isCobraFunc(fn)):
 		im.notef(path, imp.Lossy, "%s completes the fixed list %v: add enum: if the set is closed", what, fixedValues(c, fn))
 	default:
 		im.notef(path, imp.Lossy, "%s has a Go completion function (%s): reimplement it as a rotini completer", what, name)
@@ -425,15 +452,6 @@ func flagCompletion(c *cobra.Command, name string) (completionFunc, bool) {
 	}
 	fn, ok := l.GetFlagCompletionFunc(name)
 	return fn, ok && fn != nil
-}
-
-func hasRealSubCommands(c *cobra.Command) bool {
-	for _, sub := range c.Commands() {
-		if !strings.HasPrefix(sub.Name(), "__complete") && !isDefaultHelpCmd(sub) && !isDefaultCompletionCmd(sub) {
-			return true
-		}
-	}
-	return false
 }
 
 func (im *importer) argCompletion(c *cobra.Command, path string, args []*imp.Argument) {

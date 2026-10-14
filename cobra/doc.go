@@ -3,7 +3,11 @@
 // handler stubs.
 //
 // [FromCobra] walks the tree a program has built, so it sees exactly what the program
-// declares: commands, flags, annotations and argument validators. It never runs a command.
+// declares: commands, flags, annotations and argument validators. It never runs a command,
+// but it does call some of the program's code: each Args validator, with placeholder
+// arguments, to find how many positionals it accepts, and each cobra.FixedCompletions
+// function, to read its values. A custom validator is called 9 times, or up to 20 times with up
+// to 1000 arguments when it accepts 8; one with side effects has them on each call.
 // Before walking it asks Cobra to add the defaults Cobra otherwise adds only while executing
 // (the help and completion commands, and the help and version flags), so they are imported
 // too and marked as builtin.

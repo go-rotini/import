@@ -8,6 +8,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -17,7 +18,8 @@ var ErrFormat = errors.New("unsupported import description format")
 
 const formatPrefix = "rotini-import/"
 
-// Write encodes r as indented JSON, setting r.Format to [Format].
+// Write encodes r as indented JSON, setting r.Format to [Format]. It fails when r or its
+// Command is nil.
 func Write(w io.Writer, r *Result) error {
 	if r == nil || r.Command == nil {
 		return errors.New("imp: nothing to write: the result has no command")
@@ -52,9 +54,10 @@ func WriteFile(name string, r *Result) error {
 }
 
 // Read decodes a description written by [Write]. It fails with an error wrapping
-// [ErrFormat] when the description's format is missing or has another major version.
-// Unknown fields are ignored. A numeric default decodes as int64 when it is a whole number
-// that fits, and as float64 otherwise.
+// [ErrFormat] when the description's format is missing or has another major version, and
+// with a plain error when it has no command. Unknown fields are ignored. A numeric default
+// decodes as int64 when it is an integer literal that fits, as uint64 when it fits only that,
+// as float64 otherwise, and as its text when it overflows float64.
 func Read(rd io.Reader) (*Result, error) {
 	dec := json.NewDecoder(rd)
 	dec.UseNumber()
@@ -108,6 +111,9 @@ func normalizeValue(v any) any {
 	switch t := v.(type) {
 	case json.Number:
 		if n, err := t.Int64(); err == nil {
+			return n
+		}
+		if n, err := strconv.ParseUint(t.String(), 10, 64); err == nil {
 			return n
 		}
 		if f, err := t.Float64(); err == nil && !math.IsInf(f, 0) {

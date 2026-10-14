@@ -190,12 +190,12 @@
     {
       "path": "acmecli",
       "level": "info",
-      "msg": "rotini also accepts a command's own flags after a sub-command name (acmecli)"
+      "msg": "commands are imported in Cobra's alphabetical order; rotini lists them in the order the spec declares them"
     },
     {
       "path": "acmecli",
       "level": "info",
-      "msg": "commands are imported in Cobra's alphabetical order; rotini lists them in the order the spec declares them"
+      "msg": "flags and commands added inside a hook (PersistentPreRun, PreRun, Run), an OnInitialize function or a plugin loader are not in the walked tree and were not imported"
     },
     {
       "path": "acmecli",
