@@ -1047,8 +1047,10 @@ func TestNotesWrittenBeforeTheScrubHoldNoHome(t *testing.T) {
 			t.Errorf("note holds the home directory: %s", n)
 		}
 	}
-	wantNote(t, res, "app", imp.Lossy, "has the default ~/.app-state")
-	wantNote(t, res, "app", imp.Lossy, `["writes ~/.app-state"]`)
+	// The token keeps the path's own separators: "~\.app-state" on Windows.
+	tokened := filepath.FromSlash("~/.app-state")
+	wantNote(t, res, "app", imp.Lossy, "has the default "+tokened)
+	wantNote(t, res, "app", imp.Lossy, fmt.Sprintf("[%q]", "writes "+tokened))
 }
 
 func TestValidFlagOverridesRenamedInherited(t *testing.T) {

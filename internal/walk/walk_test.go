@@ -1,7 +1,9 @@
 package walk
 
 import (
+	"debug/pe"
 	"errors"
+	"fmt"
 	"os"
 	"reflect"
 	"runtime"
@@ -251,6 +253,7 @@ func TestFuncPosMethodValue(t *testing.T) {
 		name, file, line := FuncPos(tc.fn)
 		if name != tc.name || !strings.HasSuffix(file, "walk_test.go") || line == 0 {
 			t.Errorf("FuncPos = %q %q %d, want %q in walk_test.go", name, file, line, tc.name)
+			logMethodPos(t, tc.fn, tc.name)
 		}
 	}
 	// A method that compiles to nothing leaves no trace to find; it is named, not located.
@@ -399,6 +402,92 @@ func TestMachineScrubHelpText(t *testing.T) {
 	}
 	if !reflect.DeepEqual(notes, want) {
 		t.Errorf("notes:\n%s", strings.Join(notes, "\n"))
+	}
+}
+
+// logMethodPos logs each step methodPos takes to locate method, the method that the method
+// value fn wraps, so a failure on a platform the tests can't be run on locally says which
+// step failed.
+func logMethodPos(t *testing.T, fn any, method string) {
+	t.Helper()
+	pc := FuncValue(fn)
+	f := runtime.FuncForPC(pc)
+	if f == nil {
+		t.Logf("diagnostic: no runtime.Func for pc %#x", pc)
+		return
+	}
+	file, line := f.FileLine(pc)
+	t.Logf("diagnostic: wrapper %q at %s:%d, entry %#x, GOOS/GOARCH %s/%s", f.Name(), file, line, f.Entry(), runtime.GOOS, runtime.GOARCH)
+	entry := f.Entry()
+	for p := entry; p < entry+maxWrapperSize; p++ {
+		if g := runtime.FuncForPC(p); g == nil || g.Entry() != entry {
+			t.Logf("diagnostic: wrapper ends at +%#x", p-entry)
+			break
+		}
+		if frame, _ := runtime.CallersFrames([]uintptr{p + 1}).Next(); frame.Function != f.Name() {
+			t.Logf("diagnostic: wrapper +%#x reaches %q at %s:%d", p-entry, frame.Function, frame.File, frame.Line)
+		}
+	}
+	exe, err := os.Executable()
+	t.Logf("diagnostic: os.Executable = %q, %v", exe, err)
+	if err != nil {
+		return
+	}
+	if fi, err := os.Stat(exe); err != nil {
+		t.Logf("diagnostic: stat: %v", err)
+	} else {
+		t.Logf("diagnostic: executable size %d", fi.Size())
+	}
+	if pf, err := pe.Open(exe); err != nil {
+		t.Logf("diagnostic: pe.Open: %v", err)
+	} else {
+		var names []string
+		for _, s := range pf.Symbols {
+			if s.Name == "runtime.pclntab" || s.Name == "runtime.epclntab" || s.Name == "runtime.text" {
+				names = append(names, fmt.Sprintf("%s sect=%d value=%#x", s.Name, s.SectionNumber, s.Value))
+			}
+		}
+		t.Logf("diagnostic: PE %d symbols, %d sections; %v", len(pf.Symbols), len(pf.Sections), names)
+		_ = pf.Close()
+	}
+	data, text := pclntab(exe)
+	t.Logf("diagnostic: pclntab %d bytes, text %#x", len(data), text)
+	tab := symbols()
+	if tab == nil {
+		t.Logf("diagnostic: no symbol table")
+		return
+	}
+	g := tab.LookupFunc(method)
+	if g == nil {
+		var near []string
+		for _, h := range tab.Funcs {
+			if strings.Contains(h.Name, "receiver") || strings.Contains(h.Name, "actions") {
+				near = append(near, h.Name)
+			}
+		}
+		t.Logf("diagnostic: %d functions, none named %q; similar: %q", len(tab.Funcs), method, near)
+		return
+	}
+	pfile, pline, _ := tab.PCToLine(g.Entry)
+	t.Logf("diagnostic: table has %q at %s:%d, entry %#x", method, pfile, pline, g.Entry)
+}
+
+func TestMachineScrubWindowsTestBinary(t *testing.T) {
+	// On Windows, help text that names the program from os.Args[0] holds the name with ".exe".
+	m := &Machine{testName: "app.test", name: "app"}
+	root := &imp.Command{Name: "app", Summary: "the app.test.exe tool", Examples: []string{"app.test.exe sub x"}}
+	var notes []string
+	m.Scrub(root, "app", func(path string, level imp.Level, msg string) {
+		notes = append(notes, msg)
+	})
+	if root.Summary != "the app tool" || root.Examples[0] != "app sub x" {
+		t.Errorf("summary %q, example %q", root.Summary, root.Examples[0])
+	}
+	if want := []string{`the test binary's name "app.test", which the program read from os.Args[0], was replaced by "app" in one command`}; !reflect.DeepEqual(notes, want) {
+		t.Errorf("notes %q", notes)
+	}
+	if got := m.find("C:/x/app.test.exe"); got != "the test binary's name" {
+		t.Errorf("find = %q", got)
 	}
 }
 

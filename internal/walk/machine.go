@@ -160,7 +160,7 @@ func (m *Machine) find(s string) string {
 			return "the host name"
 		}
 	}
-	if m.testName != "" && containsWord(s, m.testName, "") {
+	if m.testName != "" && (containsWord(s, m.testName+".exe", "") || containsWord(s, m.testName, "")) {
 		return "the test binary's name"
 	}
 	return ""
@@ -226,8 +226,11 @@ func (m *Machine) text(s string) (string, bool) {
 			pathHit = pathHit || ok
 		}
 	}
+	// On Windows the name as written ends in ".exe", which would make testName part of a
+	// longer name.
+	s, exeHit := replaceWord(s, m.testName+".exe", "", m.name)
 	s, ok := replaceWord(s, m.testName, "", m.name)
-	return s, ok || pathHit
+	return s, ok || exeHit || pathHit
 }
 
 // pathForms lists the ways text can spell a path: as it is, with backslashes for slashes,
