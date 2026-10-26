@@ -1,20 +1,39 @@
+# Minor and patch updates come grouped, and merge themselves once CI passes on them
+# (dependabot-merge.yml); a major version gets its own pull request, for review.
 version: 2
 updates:
-  # go.mod requires the oldest Cobra the Cobra importer builds with on purpose, so that
-  # importing never raises the Cobra version of the program it reads.
+  # fix(deps) so semantic-release ships each dependency bump as a patch release. go-rotini
+  # modules are checked daily, so a release reaches the rest of the family within a day; other
+  # modules are proposed once a release has been out for three days.
   - package-ecosystem: gomod
     directory: /
     schedule:
-      interval: weekly
+      interval: daily
     commit-message:
       prefix: fix
       include: scope
+    cooldown:
+      default-days: 3
+      exclude: ["github.com/go-rotini/*"]
+    # go.mod requires the oldest release of each framework an importer builds with, on purpose:
+    # importing never raises the framework version of the program it reads. make
+    # test-<framework>-versions checks the newer releases.
     ignore:
       - dependency-name: github.com/spf13/cobra
       - dependency-name: github.com/spf13/pflag
       - dependency-name: github.com/inconshreveable/mousetrap
+      - dependency-name: github.com/alecthomas/kong
+      - dependency-name: github.com/urfave/cli/v3
+    groups:
+      go-rotini:
+        patterns: ["github.com/go-rotini/*"]
+        update-types: [minor, patch]
+      go-deps:
+        patterns: ["*"]
+        update-types: [minor, patch]
 
-  # ci(deps) so an Actions bump, which changes nothing users get, cuts no release.
+  # ci(deps) so an Actions bump, which changes nothing users get, cuts no release. Most actions
+  # live in the shared workflows (go-rotini/.github); this covers the ones used here.
   - package-ecosystem: github-actions
     directory: /
     schedule:
@@ -22,3 +41,7 @@ updates:
     commit-message:
       prefix: ci
       include: scope
+    groups:
+      actions:
+        patterns: ["*"]
+        update-types: [minor, patch]
