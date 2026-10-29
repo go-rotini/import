@@ -120,7 +120,19 @@
                 "name": "name",
                 "schema": {
                   "type": "string",
-                  "required": true
+                  "required": true,
+                  "completions": [
+                    {
+                      "value": "dev",
+                      "summary": "development"
+                    },
+                    {
+                      "value": "prod"
+                    },
+                    {
+                      "value": "production"
+                    }
+                  ]
                 }
               }
             ],
@@ -645,6 +657,9 @@
             "identifiers": [
               "--since-seconds"
             ],
+            "hidden_identifiers": [
+              "--since_seconds"
+            ],
             "schema": {
               "type": "int64"
             }
@@ -799,6 +814,16 @@
       "msg": "Version \"1.4.2\": Cobra's version flag is kept as --version, on this command only; the version string itself belongs in the build (ldflags) or the root hook"
     },
     {
+      "path": "acme cluster create",
+      "level": "info",
+      "msg": "ValidArgs [dev prod] imported as completion values of <name>, not an enum: the Args validator does not check values against them, so Cobra accepts any value"
+    },
+    {
+      "path": "acme cluster create",
+      "level": "info",
+      "msg": "ArgAliases [production] imported as completion values of <name>: Cobra offers them only when no ValidArgs value matches the word"
+    },
+    {
       "path": "acme completion",
       "level": "info",
       "msg": "Cobra's completion sub-commands merged into one command with a shell argument"
@@ -879,6 +904,11 @@
       "msg": "Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras"
     },
     {
+      "path": "acme logs",
+      "level": "lossy",
+      "msg": "flag names pass through the normalization function example.com/demo.wordSep: the other spellings it accepts for 1 flag (such as --since_seconds for --since-seconds) were imported as hidden identifiers, so scripts that use them keep working; it may accept spellings the import did not find: it tried the name with its separators ('-', '_', '.') made all one of them or removed, in camel case and in upper case, and the command line rejects any other spelling after the import"
+    },
+    {
       "path": "acme",
       "level": "info",
       "msg": "Cobra prints deprecation warnings itself; in rotini a hook reads rotini.Deprecations and prints them"
@@ -897,6 +927,11 @@
       "path": "acme",
       "level": "info",
       "msg": "flags and commands added inside a hook (PersistentPreRun, PreRun, Run), an OnInitialize function or a plugin loader are not in the walked tree and were not imported"
+    },
+    {
+      "path": "acme",
+      "level": "info",
+      "msg": "the command tree was walked as the program built it on $GOOS/$GOARCH with this environment's variables: commands and flags it adds only on another system or under other environment variables are not imported"
     }
   ],
   "hooks": [
@@ -906,7 +941,7 @@
       "rotini": "CascadingPreRun",
       "func": "example.com/demo.Root.func1",
       "file": "$FIXTURE/demo.go",
-      "line": 34
+      "line": 41
     },
     {
       "path": "acme cluster create",
@@ -914,7 +949,7 @@
       "rotini": "Run",
       "func": "example.com/demo.run",
       "file": "$FIXTURE/demo.go",
-      "line": 26
+      "line": 33
     },
     {
       "path": "acme cluster delete",
@@ -922,7 +957,7 @@
       "rotini": "Run",
       "func": "example.com/demo.run",
       "file": "$FIXTURE/demo.go",
-      "line": 26
+      "line": 33
     },
     {
       "path": "acme cluster list",
@@ -930,7 +965,7 @@
       "rotini": "Run",
       "func": "example.com/demo.run",
       "file": "$FIXTURE/demo.go",
-      "line": 26
+      "line": 33
     },
     {
       "path": "acme deploy",
@@ -938,7 +973,7 @@
       "rotini": "PreRun",
       "func": "example.com/demo.Root.func2",
       "file": "$FIXTURE/demo.go",
-      "line": 53
+      "line": 60
     },
     {
       "path": "acme deploy",
@@ -946,7 +981,7 @@
       "rotini": "Run",
       "func": "example.com/demo.run",
       "file": "$FIXTURE/demo.go",
-      "line": 26
+      "line": 33
     },
     {
       "path": "acme deploy",
@@ -954,7 +989,7 @@
       "rotini": "PostRun",
       "func": "example.com/demo.Root.func3",
       "file": "$FIXTURE/demo.go",
-      "line": 55
+      "line": 62
     },
     {
       "path": "acme exec",
@@ -962,7 +997,7 @@
       "rotini": "Run",
       "func": "example.com/demo.run",
       "file": "$FIXTURE/demo.go",
-      "line": 26
+      "line": 33
     },
     {
       "path": "acme get",
@@ -970,7 +1005,7 @@
       "rotini": "Run",
       "func": "example.com/demo.run",
       "file": "$FIXTURE/demo.go",
-      "line": 26
+      "line": 33
     },
     {
       "path": "acme logs",
@@ -978,7 +1013,7 @@
       "rotini": "Run",
       "func": "example.com/demo.run",
       "file": "$FIXTURE/demo.go",
-      "line": 26
+      "line": 33
     },
     {
       "path": "acme rollback",
@@ -986,7 +1021,7 @@
       "rotini": "Run",
       "func": "example.com/demo.run",
       "file": "$FIXTURE/demo.go",
-      "line": 26
+      "line": 33
     },
     {
       "path": "acme secrets",
@@ -994,7 +1029,7 @@
       "rotini": "Run",
       "func": "example.com/demo.run",
       "file": "$FIXTURE/demo.go",
-      "line": 26
+      "line": 33
     },
     {
       "path": "acme ssh",
@@ -1002,7 +1037,7 @@
       "rotini": "Run",
       "func": "example.com/demo.run",
       "file": "$FIXTURE/demo.go",
-      "line": 26
+      "line": 33
     },
     {
       "path": "acme version",
@@ -1010,7 +1045,7 @@
       "rotini": "Run",
       "func": "example.com/demo.Root.func9",
       "file": "$FIXTURE/demo.go",
-      "line": 144
+      "line": 153
     }
   ]
 }

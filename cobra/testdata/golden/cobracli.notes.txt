@@ -5,4 +5,5 @@
 [info] acmecli: commands are imported in Cobra's alphabetical order; rotini lists them in the order the spec declares them
 [info] acmecli: flags and commands added inside a hook (PersistentPreRun, PreRun, Run), an OnInitialize function or a plugin loader are not in the walked tree and were not imported
 [lossy] acmecli: viper is linked in: its bindings (BindPFlag, AutomaticEnv, SetEnvPrefix, config paths) were not imported; declare variable: and key: on inputs, env_prefix and config_files by hand
-imported 6 commands, 5 flags: 1 lossy, 0 unsupported, 6 info
+[info] acmecli: the command tree was walked as the program built it on $GOOS/$GOARCH with this environment's variables: commands and flags it adds only on another system or under other environment variables are not imported
+imported 6 commands, 5 flags: 1 lossy, 0 unsupported, 7 info

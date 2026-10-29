@@ -150,6 +150,11 @@
       "path": "tasks",
       "level": "info",
       "msg": "urfave/cli prints help for a command with no Action; rotini runs that command's handler, so make it print help"
+    },
+    {
+      "path": "tasks",
+      "level": "info",
+      "msg": "the command tree was walked as the program built it on $GOOS/$GOARCH with this environment's variables: commands and flags it adds only on another system or under other environment variables are not imported"
     }
   ],
   "hooks": [

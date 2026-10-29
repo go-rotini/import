@@ -183,12 +183,20 @@ func Snapshot(t *testing.T, dir string) string {
 	return b.String()
 }
 
-// Normalize removes what depends on the machine: the fixture's absolute path and the
-// importer's version.
+// Normalize removes what depends on the machine: the fixture's absolute path, the importer's
+// version and the system the notes name.
 func Normalize(r *imp.Result, dir string) {
 	r.Source.Importer = ""
+	normalizeNotes(r)
 	for i := range r.Hooks {
 		r.Hooks[i].File = strings.Replace(filepath.ToSlash(r.Hooks[i].File), filepath.ToSlash(dir), "$FIXTURE", 1)
+	}
+}
+
+// normalizeNotes writes the system the notes name as $GOOS/$GOARCH.
+func normalizeNotes(r *imp.Result) {
+	for i := range r.Notes {
+		r.Notes[i].Msg = strings.ReplaceAll(r.Notes[i].Msg, " on "+runtime.GOOS+"/"+runtime.GOARCH+" ", " on $GOOS/$GOARCH ")
 	}
 }
 
@@ -333,6 +341,7 @@ func Network(t *testing.T) {
 func Baseline(t *testing.T, name string, res *imp.Result, want imp.Stats) {
 	t.Helper()
 	if *Update {
+		normalizeNotes(res)
 		Golden(t, "network-"+name+".notes.txt", []byte(NotesText(res)))
 	}
 	got := res.Stats()

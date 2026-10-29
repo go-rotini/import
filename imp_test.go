@@ -27,14 +27,14 @@ func sample() *imp.Result {
 				{Name: "big", Identifiers: []string{"--big"}, Schema: &imp.Schema{Type: "uint64", Default: uint64(18446744073709551615)}},
 				{Name: "token", Identifiers: []string{"--token"}, Group: "Auth", Schema: &imp.Schema{Type: "string", Variable: []string{"APP_TOKEN", "TOKEN"}, Repeatable: &once}},
 				{Name: "color", Identifiers: []string{"--color"}, Schema: &imp.Schema{Type: "bool", Negatable: "--plain"}},
-				{Name: "wait", Identifiers: []string{"--wait"}, Schema: &imp.Schema{Type: "bool", Negatable: true}},
+				{Name: "wait", Identifiers: []string{"--wait"}, HiddenIdentifiers: []string{"--wait_for"}, Schema: &imp.Schema{Type: "bool", Negatable: true}},
 			},
 			Commands: []*imp.Command{{
 				Name:         "deploy",
 				OptionsFirst: true,
 				Arguments: []*imp.Argument{
 					{Name: "svc", Schema: &imp.Schema{Type: "[]string", Required: true, MinItems: &two, Items: &imp.Schema{Type: "string", Enum: []imp.EnumValue{{Value: "api", Summary: "the <api>"}}}}},
-					{Name: "rest", Passthrough: true, Schema: &imp.Schema{Type: "[]string"}},
+					{Name: "rest", Passthrough: true, Schema: &imp.Schema{Type: "[]string", Completions: []imp.EnumValue{{Value: "ls", Summary: "list"}, {Value: "rm"}}}},
 				},
 				FlagGroups: []*imp.FlagGroup{{Kind: "one_of", Flags: []string{"a", "b"}}},
 			}},
@@ -58,6 +58,11 @@ func TestWriteRead(t *testing.T) {
 	}
 	if !strings.Contains(buf.String(), "the <api>") {
 		t.Fatal("HTML escaping is on")
+	}
+	for _, key := range []string{`"hidden_identifiers": [`, `"completions": [`} {
+		if !strings.Contains(buf.String(), key) {
+			t.Fatalf("no %s in the output", key)
+		}
 	}
 	got, err := imp.Read(&buf)
 	if err != nil {

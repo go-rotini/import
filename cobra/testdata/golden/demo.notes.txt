@@ -1,5 +1,7 @@
 [lossy] acme: --output has the custom value type "format" (*demo.format): imported as string; use a type with import: and a TextUnmarshaler, or an enum
 [info] acme: Version "1.4.2": Cobra's version flag is kept as --version, on this command only; the version string itself belongs in the build (ldflags) or the root hook
+[info] acme cluster create: ValidArgs [dev prod] imported as completion values of <name>, not an enum: the Args validator does not check values against them, so Cobra accepts any value
+[info] acme cluster create: ArgAliases [production] imported as completion values of <name>: Cobra offers them only when no ValidArgs value matches the word
 [info] acme completion: Cobra's completion sub-commands merged into one command with a shell argument
 [lossy] acme deploy: comment lines in the examples dropped, since a rotini example is a command line only: ["deploy the api"]
 [unsupported] acme deploy: SuggestFor [push] dropped: rotini makes no suggestions unless the program asks for them
@@ -16,8 +18,10 @@
 [lossy] acme rollback: <revision> completes the fixed list [api web]: add enum: if the set is closed
 [lossy] acme secrets: custom Args validator example.com/demo.Root.func8: the count 0..1 was found by probing; move any value checks to the handler
 [info] acme version: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras
+[lossy] acme logs: flag names pass through the normalization function example.com/demo.wordSep: the other spellings it accepts for 1 flag (such as --since_seconds for --since-seconds) were imported as hidden identifiers, so scripts that use them keep working; it may accept spellings the import did not find: it tried the name with its separators ('-', '_', '.') made all one of them or removed, in camel case and in upper case, and the command line rejects any other spelling after the import
 [info] acme: Cobra prints deprecation warnings itself; in rotini a hook reads rotini.Deprecations and prints them
 [info] acme: Cobra prints help for a command with sub-commands and no Run; rotini runs that command's handler, so make it print help
 [info] acme: commands are imported in Cobra's alphabetical order; rotini lists them in the order the spec declares them
 [info] acme: flags and commands added inside a hook (PersistentPreRun, PreRun, Run), an OnInitialize function or a plugin loader are not in the walked tree and were not imported
-imported 16 commands, 43 flags: 12 lossy, 1 unsupported, 9 info
+[info] acme: the command tree was walked as the program built it on $GOOS/$GOARCH with this environment's variables: commands and flags it adds only on another system or under other environment variables are not imported
+imported 16 commands, 43 flags: 13 lossy, 1 unsupported, 12 info

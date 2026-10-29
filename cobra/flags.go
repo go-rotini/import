@@ -3,7 +3,9 @@ package cobra
 import (
 	"encoding/csv"
 	"fmt"
+	"reflect"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -117,6 +119,7 @@ func (im *importer) flag(c *cobra.Command, path string, f *pflag.Flag, cascading
 		im.notef(path, imp.Lossy, "-%s dropped from --%s: a short flag must be a letter", f.Shorthand, name)
 	}
 	rf.Identifiers = append(rf.Identifiers, "--"+name)
+	rf.HiddenIdentifiers = im.spellings(c, path, f.Name, name, used)
 
 	s := im.flagSchema(path, f, name)
 	rf.Schema = s
@@ -154,6 +157,132 @@ func (im *importer) flag(c *cobra.Command, path string, f *pflag.Flag, cascading
 		im.completion(c, path, "--"+name, fn, s)
 	}
 	return rf
+}
+
+// spellingsTried says which spellings of a flag name [importer.spellings] tries.
+const spellingsTried = "the name with its separators ('-', '_', '.') made all one of them or removed, in camel case and in upper case"
+
+// spellings returns, as hidden identifiers, the other spellings of the flag orig (imported
+// as name) that c's flag-name normalization function turns into orig, so the command line
+// still accepts them. A function can accept spellings beyond those tried, which is noted once
+// per function; a spelling rotini cannot take as an identifier is noted and dropped.
+func (im *importer) spellings(c *cobra.Command, path, orig, name string, used walk.Names) []string {
+	fs := c.Flags()
+	norm := normalizer(fs)
+	if norm == nil {
+		return nil
+	}
+	use := im.normalizerUse(walk.FuncName(norm), path)
+	var hidden, invalid []string
+	for _, s := range candidateSpellings(orig) {
+		if s == orig || s == name || !normalizesTo(fs, norm, s, orig) {
+			continue
+		}
+		if _, inherited := im.inherited[s]; !walk.ValidName(s) || used[s] || inherited {
+			invalid = append(invalid, "--"+s)
+			continue
+		}
+		hidden = append(hidden, "--"+s)
+	}
+	if len(hidden) > 0 {
+		use.flags++
+		if use.example == "" {
+			use.example = fmt.Sprintf("%s for --%s", hidden[0], name)
+		}
+	}
+	if len(invalid) > 0 {
+		im.notef(path, imp.Lossy, "--%s also accepts %s through the flag-name normalization function, which are not valid rotini identifiers here or name another flag: dropped", name, strings.Join(invalid, ", "))
+	}
+	return hidden
+}
+
+// normalizerUse is one flag-name normalization function the walk met: where first, and how
+// many flags it gave hidden identifiers.
+type normalizerUse struct {
+	fn, path string
+	flags    int
+	example  string
+}
+
+func (im *importer) normalizerUse(fn, path string) *normalizerUse {
+	for _, u := range im.normalizers {
+		if u.fn == fn {
+			return u
+		}
+	}
+	u := &normalizerUse{fn: fn, path: path}
+	im.normalizers = append(im.normalizers, u)
+	return u
+}
+
+// normalizerNotes reports each normalization function once, on the command it was first met
+// at: the spellings imported, and that it may accept more.
+func (im *importer) normalizerNotes() {
+	for _, u := range im.normalizers {
+		unfound := fmt.Sprintf("it may accept spellings the import did not find: it tried %s, and the command line rejects any other spelling after the import", spellingsTried)
+		switch u.flags {
+		case 0:
+			im.notef(u.path, imp.Lossy, "flag names pass through the normalization function %s; %s", u.fn, unfound)
+		default:
+			what := "1 flag"
+			if u.flags > 1 {
+				what = fmt.Sprintf("%d flags", u.flags)
+			}
+			im.notef(u.path, imp.Lossy, "flag names pass through the normalization function %s: the other spellings it accepts for %s (such as %s) were imported as hidden identifiers, so scripts that use them keep working; %s", u.fn, what, u.example, unfound)
+		}
+	}
+}
+
+type normalizeFunc = func(*pflag.FlagSet, string) pflag.NormalizedName
+
+// normalizer returns the flag-name normalization function set on fs, or nil when there is
+// none. pflag's GetNormalizeFunc returns an identity function then, so its unexported field
+// is read; a pflag without it is taken to have none when the function is pflag's own.
+func normalizer(fs *pflag.FlagSet) normalizeFunc {
+	if v := reflect.ValueOf(fs).Elem().FieldByName("normalizeNameFunc"); v.IsValid() && v.Kind() == reflect.Func && v.IsNil() {
+		return nil
+	}
+	fn := fs.GetNormalizeFunc()
+	if strings.HasPrefix(walk.FuncName(fn), "github.com/spf13/pflag.") {
+		return nil
+	}
+	return fn
+}
+
+func normalizesTo(fs *pflag.FlagSet, norm normalizeFunc, s, want string) (ok bool) {
+	defer func() {
+		if recover() != nil {
+			ok = false
+		}
+	}()
+	return string(norm(fs, s)) == want
+}
+
+// candidateSpellings lists the spellings of name that spellingsTried describes, in a fixed
+// order, without repeats.
+func candidateSpellings(name string) []string {
+	parts := strings.FieldsFunc(name, func(r rune) bool { return r == '-' || r == '_' || r == '.' })
+	var out []string
+	add := func(s string) {
+		if s != "" && !slices.Contains(out, s) {
+			out = append(out, s)
+		}
+	}
+	for _, sep := range []string{"-", "_", ".", ""} {
+		add(strings.Join(parts, sep))
+	}
+	camel := make([]string, len(parts))
+	for i, p := range parts {
+		camel[i] = p
+		if i > 0 && p != "" {
+			camel[i] = strings.ToUpper(p[:1]) + p[1:]
+		}
+	}
+	add(strings.Join(camel, ""))
+	for _, s := range slices.Clone(out) {
+		add(strings.ToUpper(s))
+	}
+	return out
 }
 
 // pflagTypes maps pflag's value type names to rotini types. A slice or map type also takes
