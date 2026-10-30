@@ -610,6 +610,9 @@ func wantNotesOn(t *testing.T, res *imp.Result, path string, want ...string) {
 	}
 }
 
+// onlyValue isn't inlined, so its closure is named onlyValue.func1 on every Go version.
+//
+//go:noinline
 func onlyValue(v string) cobra.PositionalArgs {
 	return func(_ *cobra.Command, args []string) error {
 		for _, a := range args {

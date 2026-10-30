@@ -98,7 +98,7 @@ func Run(t *testing.T, dir, pkg string, src TestFile) (*imp.Result, string, erro
 	}
 
 	out := filepath.Join(work, "out.json")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute) // building a large program such as gitea takes minutes
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "go", "test", "-modfile", modfile, "-mod=mod", "-overlay", overlayFile,
 		"-count=1", "-run", "^"+testName+"$", "-timeout", "2m", pkg)
