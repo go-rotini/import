@@ -123,7 +123,7 @@ func (im *importer) flag(c *cobra.Command, path string, f *pflag.Flag, cascading
 
 	s := im.flagSchema(path, f, name)
 	rf.Schema = s
-	if m := backquoted.FindStringSubmatch(f.Usage); m != nil {
+	if m := backquoted.FindStringSubmatch(f.Usage); m != nil && s.Type != "bool" { // a bool flag takes no value to name
 		s.Placeholder = m[1]
 	}
 	rf.Summary = strings.TrimSpace(strings.ReplaceAll(f.Usage, "`", ""))

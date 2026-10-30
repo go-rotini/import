@@ -399,6 +399,7 @@ func TestFlagDetails(t *testing.T) {
 	f.StringToString("labels", map[string]string{"k": "v"}, "")
 	f.Int("n", 7, "")
 	f.Bool("wait", true, "")
+	f.Bool("expose", false, "create a service; requires `--port`")
 	f.String("old", "", "")
 	_ = f.MarkDeprecated("old", "use --name")
 	f.String("secret", "", "")
@@ -415,6 +416,9 @@ func TestFlagDetails(t *testing.T) {
 		file.Schema.Placeholder != "PATH" || file.Schema.Complete.Kind != "file" ||
 		!reflect.DeepEqual(file.Schema.Complete.Extensions, []string{"yaml", "json"}) {
 		t.Fatalf("file %+v %+v", file, file.Schema.Complete)
+	}
+	if expose := flagNamed(t, c, "expose"); expose.Schema.Placeholder != "" || expose.Summary != "create a service; requires --port" {
+		t.Fatalf("expose %+v %+v", expose, expose.Schema)
 	}
 	if cc := flagNamed(t, c, "any-file").Schema.Complete; cc.Kind != "file" || cc.Extensions != nil {
 		t.Fatalf("any-file %+v", cc)
