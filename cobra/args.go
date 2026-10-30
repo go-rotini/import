@@ -2,6 +2,7 @@ package cobra
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -29,13 +30,7 @@ func probe(c *cobra.Command, stock bool) (accepted []int, most int) {
 	if len(c.ValidArgs) > 0 {
 		fill = strings.SplitN(c.ValidArgs[0], "\t", 2)[0]
 	}
-	try := func(n int) bool {
-		args := make([]string, n)
-		for i := range args {
-			args[i] = fill
-		}
-		return accepts(c, args)
-	}
+	try := func(n int) bool { return accepts(c, repeat(fill, n)) }
 	for n := 0; n <= probeLimit; n++ {
 		if try(n) {
 			accepted = append(accepted, n)
@@ -68,6 +63,15 @@ func probe(c *cobra.Command, stock bool) (accepted []int, most int) {
 		}
 	}
 	return accepted, lo
+}
+
+// repeat returns n copies of v.
+func repeat(v string, n int) []string {
+	out := make([]string, n)
+	for i := range out {
+		out[i] = v
+	}
+	return out
 }
 
 func accepts(c *cobra.Command, args []string) (ok bool) {
@@ -107,7 +111,6 @@ func (im *importer) arguments(c *cobra.Command, path string) []*imp.Argument {
 	if hi == 0 {
 		return nil
 	}
-	enum := validArgs(c)
 	name := func(i int, variadic bool) string {
 		switch {
 		case i < len(declared):
@@ -131,9 +134,6 @@ func (im *importer) arguments(c *cobra.Command, path string) []*imp.Argument {
 	var out []*imp.Argument
 	for i := range scalars {
 		s := &imp.Schema{Type: "string", Required: i < lo}
-		if i == 0 {
-			s.Enum = enum
-		}
 		out = append(out, &imp.Argument{Name: name(i, false), Schema: s})
 	}
 	if list {
@@ -146,15 +146,9 @@ func (im *importer) arguments(c *cobra.Command, path string) []*imp.Argument {
 			most := hi - scalars
 			s.MaxItems = &most
 		}
-		if scalars == 0 && enum != nil {
-			s.Items = &imp.Schema{Type: "string", Enum: enum}
-		}
 		out = append(out, &imp.Argument{Name: name(scalars, true), Schema: s})
 	}
 	walk.UniqueNames(out)
-	if enum != nil && len(out) > 1 {
-		im.notef(path, imp.Lossy, "ValidArgs became the enum of the first argument only")
-	}
 	if len(out) > len(declared) {
 		im.notef(path, imp.Lossy, "argument names invented (%s): the Use line %q does not name them", argNames(out[len(declared):]), c.Use)
 	}
@@ -184,7 +178,6 @@ func (im *importer) counts(c *cobra.Command, path string) (lo, hi int) {
 // Cobra accepts any positionals then, so unless Options.Strict a trailing variadic "args"
 // keeps that behavior.
 func (im *importer) fromUse(c *cobra.Command, path string, declared []walk.UseArg) []*imp.Argument {
-	enum := validArgs(c)
 	var out []*imp.Argument
 	variadic := false
 	for i, d := range declared {
@@ -194,13 +187,6 @@ func (im *importer) fromUse(c *cobra.Command, path string, declared []walk.UseAr
 			if !d.Optional {
 				one := 1
 				s.MinItems = &one
-			}
-		}
-		if i == 0 && enum != nil {
-			if d.Variadic {
-				s.Items = &imp.Schema{Type: "string", Enum: enum}
-			} else {
-				s.Enum = enum
 			}
 		}
 		out = append(out, &imp.Argument{Name: d.Name, Schema: s})
@@ -227,9 +213,6 @@ func (im *importer) fromUse(c *cobra.Command, path string, declared []walk.UseAr
 	}
 	if !variadic && !im.opts.Strict {
 		s := &imp.Schema{Type: "[]string"}
-		if len(out) == 0 && enum != nil {
-			s.Items = &imp.Schema{Type: "string", Enum: enum}
-		}
 		out = append(out, &imp.Argument{Name: "args", Summary: "further arguments", Schema: s})
 		im.notef(path, imp.Info, "Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras")
 	}
@@ -237,15 +220,88 @@ func (im *importer) fromUse(c *cobra.Command, path string, declared []walk.UseAr
 	return out
 }
 
-// validArgs reads ValidArgs ("value" or "value\tdescription") as enum values.
-func validArgs(c *cobra.Command) []imp.EnumValue {
-	if len(c.ValidArgs) == 0 {
+// argValues puts ValidArgs and ArgAliases on the first argument, the one Cobra completes them
+// for. ValidArgs is an enum when the Args validator rejects a value it does not list, as
+// OnlyValidArgs does; otherwise Cobra accepts any value, and ValidArgs is only what it
+// completes. ArgAliases, which Cobra completes when no ValidArgs value matches and which
+// OnlyValidArgs rejects, are completion values.
+func (im *importer) argValues(c *cobra.Command, path string, args []*imp.Argument) {
+	valid, aliases := enumValues(c.ValidArgs), enumValues(c.ArgAliases)
+	switch {
+	case valid == nil && aliases == nil:
+		return
+	case valid == nil:
+		im.notef(path, imp.Info, "ArgAliases %v dropped: Cobra completes them only on a command with ValidArgs", values(aliases))
+		return
+	case len(args) == 0 && aliases != nil:
+		im.notef(path, imp.Info, "ValidArgs %v and ArgAliases %v dropped: the command takes no arguments", values(valid), values(aliases))
+		return
+	case len(args) == 0:
+		im.notef(path, imp.Info, "ValidArgs %v dropped: the command takes no arguments", values(valid))
+		return
+	}
+	first := args[0]
+	s := first.Schema
+	if enforcesValidArgs(c) {
+		if s.Type == "[]string" {
+			s.Items = &imp.Schema{Type: "string", Enum: valid}
+		} else {
+			s.Enum = valid
+		}
+		if len(args) > 1 {
+			im.notef(path, imp.Lossy, "ValidArgs became the enum of the first argument only")
+		}
+	} else {
+		s.Completions = valid
+		im.notef(path, imp.Info, "ValidArgs %v imported as completion values of <%s>, not an enum: the Args validator does not check values against them, so Cobra accepts any value", values(valid), first.Name)
+	}
+	for _, a := range aliases {
+		if !slices.ContainsFunc(s.Completions, func(v imp.EnumValue) bool { return v.Value == a.Value }) {
+			s.Completions = append(s.Completions, a)
+		}
+	}
+	if aliases != nil {
+		im.notef(path, imp.Info, "ArgAliases %v imported as completion values of <%s>: Cobra offers them only when no ValidArgs value matches the word", values(aliases), first.Name)
+	}
+}
+
+// enforcesValidArgs reports whether c's Args validator checks values against ValidArgs: at
+// the first count it accepts ValidArgs' first value at, it rejects a value ValidArgs does not
+// list.
+func enforcesValidArgs(c *cobra.Command) bool {
+	if c.Args == nil || len(c.ValidArgs) == 0 {
+		return false
+	}
+	listed := values(enumValues(c.ValidArgs))
+	other := "rotini-import-unlisted"
+	for slices.Contains(listed, other) {
+		other += "_"
+	}
+	for n := 1; n <= probeLimit; n++ {
+		if accepts(c, repeat(listed[0], n)) {
+			return !accepts(c, repeat(other, n))
+		}
+	}
+	return false
+}
+
+// enumValues reads Cobra's "value" or "value\tdescription" words as enum values.
+func enumValues(words []string) []imp.EnumValue {
+	if len(words) == 0 {
 		return nil
 	}
-	out := make([]imp.EnumValue, 0, len(c.ValidArgs))
-	for _, v := range c.ValidArgs {
+	out := make([]imp.EnumValue, 0, len(words))
+	for _, v := range words {
 		value, summary, _ := strings.Cut(v, "\t")
 		out = append(out, imp.EnumValue{Value: value, Summary: strings.TrimSpace(summary)})
+	}
+	return out
+}
+
+func values(es []imp.EnumValue) []string {
+	out := make([]string, 0, len(es))
+	for _, e := range es {
+		out = append(out, e.Value)
 	}
 	return out
 }

@@ -308,6 +308,13 @@ func moduleVersion(m *debug.Module) string {
 	return m.Version
 }
 
+// EnvironmentNote is the note every import adds once, on the root: the tree is the one the
+// program built where the import ran.
+func EnvironmentNote() string {
+	return "the command tree was walked as the program built it on " + runtime.GOOS + "/" + runtime.GOARCH +
+		" with this environment's variables: commands and flags it adds only on another system or under other environment variables are not imported"
+}
+
 // DependsOn reports whether the running program links the module at path, as its build
 // records it. A test binary built by Go before 1.27 records no dependencies, so there it
 // reports false.

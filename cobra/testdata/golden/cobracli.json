@@ -201,6 +201,11 @@
       "path": "acmecli",
       "level": "lossy",
       "msg": "viper is linked in: its bindings (BindPFlag, AutomaticEnv, SetEnvPrefix, config paths) were not imported; declare variable: and key: on inputs, env_prefix and config_files by hand"
+    },
+    {
+      "path": "acmecli",
+      "level": "info",
+      "msg": "the command tree was walked as the program built it on $GOOS/$GOARCH with this environment's variables: commands and flags it adds only on another system or under other environment variables are not imported"
     }
   ],
   "hooks": [

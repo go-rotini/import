@@ -101,6 +101,11 @@
       "path": "shell",
       "level": "info",
       "msg": "options the program passes to kong.Parse or kong.New (kong.Description, kong.Configuration, resolvers, groups, mappers, bindings) were not seen unless given to the import"
+    },
+    {
+      "path": "shell",
+      "level": "info",
+      "msg": "the command tree was walked as the program built it on $GOOS/$GOARCH with this environment's variables: commands and flags it adds only on another system or under other environment variables are not imported"
     }
   ]
 }

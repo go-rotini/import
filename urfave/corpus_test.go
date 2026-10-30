@@ -38,8 +38,8 @@ func TestNetworkCorpus(t *testing.T) {
 		name, module, pkg, root string
 		baseline                imp.Stats
 	}{
-		{"woodpecker", "go.woodpecker-ci.org/woodpecker/v3@v3.19.1-0.20261012144008-b9573e7f525c", "./cmd/cli", "newApp()", imp.Stats{Commands: 92, Flags: 302, Lossy: 8, Unsupported: 1, Info: 77}},
-		{"gitea", "gitea.dev@v1.28.0-dev.0.20261012161222-0eb0126fa244", "./cmd", "NewMainApp(AppVersion{})", imp.Stats{Commands: 75, Flags: 338, Lossy: 3, Unsupported: 2, Info: 60}},
+		{"woodpecker", "go.woodpecker-ci.org/woodpecker/v3@v3.19.1-0.20261012144008-b9573e7f525c", "./cmd/cli", "newApp()", imp.Stats{Commands: 92, Flags: 302, Lossy: 8, Unsupported: 1, Info: 78}},
+		{"gitea", "gitea.dev@v1.28.0-dev.0.20261012161222-0eb0126fa244", "./cmd", "NewMainApp(AppVersion{})", imp.Stats{Commands: 75, Flags: 338, Lossy: 3, Unsupported: 2, Info: 61}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

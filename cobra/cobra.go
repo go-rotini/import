@@ -31,6 +31,8 @@ type importer struct {
 	// inherits to their pflag names; orig holds each imported flag's pflag name.
 	inherited map[string]string
 	orig      map[*imp.Flag]string
+	// normalizers holds the flag-name normalization functions met, in walk order.
+	normalizers []*normalizerUse
 	// facts gathered for the once-per-import notes
 	deprecations     bool
 	groupNoRun       bool
@@ -144,10 +146,12 @@ func (im *importer) command(c *cobra.Command, name, parent string) *imp.Command 
 
 	if c.DisableFlagParsing {
 		im.passthrough(c, path, rc)
+		im.argValues(c, path, rc.Arguments)
 		return rc
 	}
 
 	rc.Arguments = im.arguments(c, path)
+	im.argValues(c, path, rc.Arguments)
 	im.argCompletion(c, path, rc.Arguments)
 	rc.Flags, rc.FlagGroups = im.flags(c, path)
 	if !interspersed(c.Flags()) {
@@ -328,6 +332,7 @@ func (im *importer) programNotes(root *cobra.Command, rc *imp.Command) {
 	for _, msg := range walk.SharedHooks(im.hooks) {
 		im.notef(path, imp.Info, "%s", m.ScrubNote(msg))
 	}
+	im.normalizerNotes()
 	if im.deprecations {
 		im.notef(path, imp.Info, "Cobra prints deprecation warnings itself; in rotini a hook reads rotini.Deprecations and prints them")
 	}
@@ -349,4 +354,5 @@ func (im *importer) programNotes(root *cobra.Command, rc *imp.Command) {
 	if walk.DependsOn("github.com/spf13/viper") {
 		im.notef(path, imp.Lossy, "viper is linked in: its bindings (BindPFlag, AutomaticEnv, SetEnvPrefix, config paths) were not imported; declare variable: and key: on inputs, env_prefix and config_files by hand")
 	}
+	im.notef(path, imp.Info, "%s", walk.EnvironmentNote())
 }

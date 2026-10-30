@@ -84,4 +84,5 @@
 [lossy] woodpecker-cli exec: --backend-local-temp-dir: the default "<temp>/" holds the temporary directory of the machine the import ran on, so it was dropped; declare it with expand: or set it in the handler
 [info] woodpecker-cli: urfave/cli also answers "<command> help" on each command with sub-commands; rotini's help command is on the root only, so "help <command>" or --help reaches that help
 [info] woodpecker-cli: urfave/cli prints help for a command with no Action; rotini runs that command's handler, so make it print help
-imported 92 commands, 302 flags: 8 lossy, 1 unsupported, 77 info
+[info] woodpecker-cli: the command tree was walked as the program built it on $GOOS/$GOARCH with this environment's variables: commands and flags it adds only on another system or under other environment variables are not imported
+imported 92 commands, 302 flags: 8 lossy, 1 unsupported, 78 info

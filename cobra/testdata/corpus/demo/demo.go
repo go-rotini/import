@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 type format string
@@ -22,6 +24,11 @@ func (f *format) Set(s string) error {
 	return errors.New("bad format")
 }
 func (f *format) Type() string { return "format" }
+
+// wordSep accepts "_" for "-" in flag names, as kubectl does.
+func wordSep(_ *pflag.FlagSet, name string) pflag.NormalizedName {
+	return pflag.NormalizedName(strings.ReplaceAll(name, "_", "-"))
+}
 
 func run(cmd *cobra.Command, args []string) error { fmt.Println(cmd.CommandPath(), args); return nil }
 
@@ -106,7 +113,8 @@ func Root() *cobra.Command {
 	// logs: MinimumNArgs(1), unnamed in Use
 	logs := &cobra.Command{Use: "logs", Short: "Tail logs of pods", GroupID: "core", Args: cobra.MinimumNArgs(1), RunE: run}
 	logs.Flags().BoolP("follow", "f", false, "follow")
-	logs.Flags().Int64("since-seconds", 0, "only newer logs")
+	logs.Flags().Int64("since_seconds", 0, "only newer logs")
+	logs.Flags().SetNormalizeFunc(wordSep)
 	logs.ValidArgsFunction = func(*cobra.Command, []string, string) ([]cobra.Completion, cobra.ShellCompDirective) {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
@@ -116,7 +124,8 @@ func Root() *cobra.Command {
 	cluster.PersistentFlags().String("region", "us-east-1", "cloud region")
 	cList := &cobra.Command{Use: "list", Aliases: []string{"ls"}, Short: "List clusters", Args: cobra.NoArgs, RunE: run}
 	cList.Flags().StringToInt("limits", nil, "per-zone limits")
-	cCreate := &cobra.Command{Use: "create NAME", Short: "Create a cluster", Args: cobra.ExactArgs(1), RunE: run}
+	cCreate := &cobra.Command{Use: "create NAME", Short: "Create a cluster", Args: cobra.ExactArgs(1), RunE: run,
+		ValidArgs: []string{"dev\tdevelopment", "prod"}, ArgAliases: []string{"production"}}
 	cCreate.Flags().Uint8("nodes", 3, "node count")
 	cCreate.Flags().DurationSlice("backoff", nil, "retry backoffs")
 	cDelete := &cobra.Command{Use: "delete NAME...", Short: "Delete clusters", Args: cobra.MinimumNArgs(1), RunE: run, Deprecated: "use 'acme cluster rm'"}

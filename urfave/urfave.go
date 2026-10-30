@@ -379,4 +379,5 @@ func (im *importer) programNotes(rc *imp.Command) {
 	if walk.DependsOn("github.com/urfave/cli-altsrc/v3") {
 		im.notef(path, imp.Lossy, "cli-altsrc is linked in: values read from configuration files were not imported; declare config_files and key: on inputs by hand")
 	}
+	im.notef(path, imp.Info, "%s", walk.EnvironmentNote())
 }

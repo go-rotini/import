@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -109,6 +110,27 @@ func TestFromKongErrors(t *testing.T) {
 	_, err := kongimport.FromKong(&struct{}{}, kongimport.Options{KongOptions: []kong.Option{boom}})
 	if err == nil || !strings.Contains(err.Error(), "boom") {
 		t.Fatalf("want the panic as an error, got %v", err)
+	}
+}
+
+func TestEnvironmentNote(t *testing.T) {
+	var cli struct {
+		Run struct{} `cmd:""`
+	}
+	res := importGrammar(t, &cli, kongimport.Options{})
+	want := imp.Note{Path: "app", Level: imp.Info, Msg: "the command tree was walked as the program built it on " + runtime.GOOS + "/" + runtime.GOARCH +
+		" with this environment's variables: commands and flags it adds only on another system or under other environment variables are not imported"}
+	n := 0
+	for _, got := range res.Notes {
+		if strings.Contains(got.Msg, "command tree was walked") {
+			n++
+			if got != want {
+				t.Fatalf("note %v, want %v", got, want)
+			}
+		}
+	}
+	if n != 1 || res.Notes[len(res.Notes)-1] != want {
+		t.Fatalf("want the environment note once, last:\n%s", dumpNotes(res))
 	}
 }
 

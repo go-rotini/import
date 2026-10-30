@@ -38,7 +38,7 @@ func TestNetworkCorpus(t *testing.T) {
 		name, module, pkg, grammar, options string
 		baseline                            imp.Stats
 	}{
-		{"git-spice", "go.abhg.dev/gs@v0.31.3-0.20261001180930-c5274c7df6e6", ".", "&mainCmd{}", `Name: "gs"`, imp.Stats{Commands: 74, Flags: 302, Lossy: 71, Unsupported: 11, Info: 3}},
+		{"git-spice", "go.abhg.dev/gs@v0.31.3-0.20261001180930-c5274c7df6e6", ".", "&mainCmd{}", `Name: "gs"`, imp.Stats{Commands: 74, Flags: 302, Lossy: 71, Unsupported: 11, Info: 4}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -349,4 +349,5 @@ func (im *importer) programNotes(path string) {
 	if walk.DependsOn("github.com/willabides/kongplete") {
 		im.notef(path, imp.Info, "kongplete is linked in: rotini generates completion scripts from the spec when the completion feature is on")
 	}
+	im.notef(path, imp.Info, "%s", walk.EnvironmentNote())
 }

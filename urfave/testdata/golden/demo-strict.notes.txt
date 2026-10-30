@@ -19,4 +19,5 @@
 [info] acme: urfave/cli also answers "<command> help" on each command with sub-commands; rotini's help command is on the root only, so "help <command>" or --help reaches that help
 [info] acme: urfave/cli prints deprecation warnings itself; in rotini a hook reads rotini.Deprecations and prints them
 [info] acme: urfave/cli prints help for a command with no Action; rotini runs that command's handler, so make it print help
-imported 17 commands, 34 flags: 13 lossy, 4 unsupported, 4 info
+[info] acme: the command tree was walked as the program built it on $GOOS/$GOARCH with this environment's variables: commands and flags it adds only on another system or under other environment variables are not imported
+imported 17 commands, 34 flags: 13 lossy, 4 unsupported, 5 info

@@ -16,7 +16,7 @@ One module holds the description and one package per framework:
 - Reads the tree a program has built, so it sees exactly what the program declares: commands, aliases, groups, hidden and deprecated items, persistent and local flags, every value type with a rotini equivalent, defaults, environment variables, required flags, file and directory hints, flag groups and arguments
 - Adds the help, version and completion commands and flags a framework otherwise adds only while running, and marks them as builtin
 - Names arguments from the usage line (Cobra's `Use`, urfave/cli's `ArgsUsage`) where the framework declares none, sanitised to valid names and de-duplicated
-- Reports what it cannot carry across exactly, one note per item, graded `lossy`, `unsupported` or `info`
+- Reports what it cannot carry across exactly, one note per item, graded `lossy`, `unsupported` or `info`, and in every import one `info` note that the tree is the one the program built on this system and with this environment, so commands it adds only elsewhere are missing
 - Points at every run hook with its file and line, mapped to the matching rotini handler hook
 - Leaves out what the program worked out on the importing machine: a default under the home, cache, configuration, per-user temporary or working directory, or holding the host name, is dropped with a note; in help text, with a note, and in notes the same paths are written as tokens (`~/.app.yaml`); a default under a shared temporary directory such as `/tmp` is kept with a note; and the test binary's name read from `os.Args[0]` is replaced by the program's, including a root named after it or after the binary's full path
 - A versioned JSON description (`"format": "rotini-import/1"`); `Read` refuses a major version it does not know
@@ -80,7 +80,9 @@ func main() {
 | required, filename and dirname annotations | `required`, `complete: {kind: file \| directory}` | a required flag's default is dropped |
 | the three flag-group annotations | `required_together`, `at_least_one`, `mutually_exclusive`; the last two over one set become `one_of` | groups mixing a command's own and inherited flags are dropped |
 | `Args` validators | argument counts, found by calling the validator with placeholder arguments | a custom validator's value checks are lost |
-| `ValidArgs` | an enum on the first argument, with descriptions | |
+| `ValidArgs` | an enum on the first argument, with descriptions, when the `Args` validator checks values (`OnlyValidArgs`); otherwise its completion values | found by calling the validator with a listed and an unlisted value |
+| `ArgAliases` | completion values of the first argument | noted; dropped with a note on a command without `ValidArgs` |
+| `SetNormalizeFunc`, `SetGlobalNormalizationFunc` | the other spellings it accepts as hidden identifiers (`--log_level` for `--log-level`) | spellings are found by trying separators, camel case and upper case; others it accepts are lost, and noted once |
 | `ValidArgsFunction`, flag completion functions | `complete: {kind: none}` for `NoFileCompletions` | other functions are noted for reimplementing |
 | `DisableFlagParsing` | a passthrough command | |
 | `Flags().SetInterspersed(false)` | `options_first: true` | read from pflag's unexported setting, which has no getter; dropped with a note on a command that takes no arguments |
@@ -88,7 +90,7 @@ func main() {
 
 Flags or commands that a program registers lazily (inside a run hook, an `OnInitialize` function, a plugin loader or a wrapper around `Execute`) are not in the tree when it is walked, so they are not imported. Neither are viper bindings: when viper is linked in, the import says so.
 
-The import runs some of the program's own code: each `Args` validator is called with placeholder arguments to find how many it accepts, and `FixedCompletions` functions are called to read their values. A custom validator is called 9 times (0 to 8 arguments), and up to 20 times when it accepts 8: then it is tried with 1000, and the largest count it accepts is found by halving. A validator with side effects (one that reads files or records telemetry) has them during the import, once per call.
+The import runs some of the program's own code: each `Args` validator is called with placeholder arguments to find how many it accepts, and `FixedCompletions` functions are called to read their values. A custom validator is called 9 times (0 to 8 arguments), and up to 20 times when it accepts 8: then it is tried with 1000, and the largest count it accepts is found by halving. On a command with `ValidArgs`, any validator is called at most 9 more times, with a listed and an unlisted value, to find whether it checks values. A flag-name normalization function is called with a few spellings of each flag name. A validator with side effects (one that reads files or records telemetry) has them during the import, once per call.
 
 ### Kong
 

@@ -15,4 +15,5 @@
 [lossy] acme: Kong variables ${default_region} were not supplied: help keeps them as written, and the defaults, enums and environment variables built from them were dropped; supply each one and import again
 [info] acme: Kong rejects a command that has sub-commands when none is named; rotini runs that command's handler, so make it print help or fail
 [info] acme: options the program passes to kong.Parse or kong.New (kong.Description, kong.Configuration, resolvers, groups, mappers, bindings) were not seen unless given to the import
-imported 13 commands, 36 flags: 12 lossy, 2 unsupported, 3 info
+[info] acme: the command tree was walked as the program built it on $GOOS/$GOARCH with this environment's variables: commands and flags it adds only on another system or under other environment variables are not imported
+imported 13 commands, 36 flags: 12 lossy, 2 unsupported, 4 info

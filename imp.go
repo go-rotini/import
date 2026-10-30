@@ -80,7 +80,10 @@ type Flag struct {
 	Hidden                bool     `json:"hidden,omitempty"`
 	Deprecated            string   `json:"deprecated,omitempty"`
 	DeprecatedIdentifiers []string `json:"deprecated_identifiers,omitempty"`
-	Schema                *Schema  `json:"schema"`
+	// HiddenIdentifiers are further spellings the program accepts for the flag that its help
+	// does not list, such as "--log_level" for "--log-level". They are not in Identifiers.
+	HiddenIdentifiers []string `json:"hidden_identifiers,omitempty"`
+	Schema            *Schema  `json:"schema"`
 	// Builtin marks a flag the framework adds on its own: "help" or "version".
 	// It is not a spec key; a spec writer uses it to emit its own seed for that flag.
 	Builtin string `json:"builtin,omitempty"`
@@ -99,6 +102,9 @@ type Schema struct {
 	ImplicitValue string      `json:"implicit_value,omitempty"`
 	Placeholder   string      `json:"placeholder,omitempty"`
 	Complete      *Complete   `json:"complete,omitempty"`
+	// Completions are values shell completion offers for the input without restricting it:
+	// any other value is accepted too, unlike Enum.
+	Completions []EnumValue `json:"completions,omitempty"`
 	// Variable lists the environment variables the input falls back to, first preferred.
 	Variable []string `json:"variable,omitempty"`
 	// Negatable is true when a bool flag also takes a --no-<name> form, or the one negated

@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -246,7 +249,7 @@ func TestBuiltinVariants(t *testing.T) {
 		root.AddCommand(&cobra.Command{Use: "completion SHELL", Args: cobra.ExactArgs(1), ValidArgs: []string{"bash", "zsh"}, Run: run})
 		res := importTree(t, root, cobraimport.Options{})
 		comp := find(t, res, "app completion")
-		if comp.Builtin != "" || argSummary(comp) != "shell:string!" || len(comp.Arguments[0].Schema.Enum) != 2 {
+		if comp.Builtin != "" || argSummary(comp) != "shell:string!" || len(comp.Arguments[0].Schema.Completions) != 2 {
 			t.Fatalf("completion %+v %s", comp, argSummary(comp))
 		}
 	})
@@ -396,6 +399,7 @@ func TestFlagDetails(t *testing.T) {
 	f.StringToString("labels", map[string]string{"k": "v"}, "")
 	f.Int("n", 7, "")
 	f.Bool("wait", true, "")
+	f.Bool("expose", false, "create a service; requires `--port`")
 	f.String("old", "", "")
 	_ = f.MarkDeprecated("old", "use --name")
 	f.String("secret", "", "")
@@ -412,6 +416,9 @@ func TestFlagDetails(t *testing.T) {
 		file.Schema.Placeholder != "PATH" || file.Schema.Complete.Kind != "file" ||
 		!reflect.DeepEqual(file.Schema.Complete.Extensions, []string{"yaml", "json"}) {
 		t.Fatalf("file %+v %+v", file, file.Schema.Complete)
+	}
+	if expose := flagNamed(t, c, "expose"); expose.Schema.Placeholder != "" || expose.Summary != "create a service; requires --port" {
+		t.Fatalf("expose %+v %+v", expose, expose.Schema)
 	}
 	if cc := flagNamed(t, c, "any-file").Schema.Complete; cc.Kind != "file" || cc.Extensions != nil {
 		t.Fatalf("any-file %+v", cc)
@@ -585,20 +592,277 @@ func TestArgsValidators(t *testing.T) {
 	}
 }
 
-func TestValidArgsEnum(t *testing.T) {
-	root := &cobra.Command{Use: "app"}
-	one := &cobra.Command{Use: "one <kind>", Args: cobra.ExactArgs(1), ValidArgs: []string{"a\tthe a", "b"}, Run: run}
-	two := &cobra.Command{Use: "two <kind> <name>", Args: cobra.ExactArgs(2), ValidArgs: []string{"a"}, Run: run}
-	many := &cobra.Command{Use: "many", Args: cobra.ArbitraryArgs, ValidArgs: []string{"a"}, Run: run}
-	root.AddCommand(one, two, many)
-	res := importTree(t, root, cobraimport.Options{})
-	want := []imp.EnumValue{{Value: "a", Summary: "the a"}, {Value: "b"}}
-	if got := find(t, res, "app one").Arguments[0].Schema.Enum; !reflect.DeepEqual(got, want) {
-		t.Fatalf("enum %+v", got)
+// notesOn returns the notes on exactly path, rendered.
+func notesOn(res *imp.Result, path string) []string {
+	var out []string
+	for _, n := range res.Notes {
+		if n.Path == path {
+			out = append(out, n.String())
+		}
 	}
-	wantNote(t, res, "app two", imp.Lossy, "first argument only")
-	if items := find(t, res, "app many").Arguments[0].Schema.Items; items == nil || len(items.Enum) != 1 {
-		t.Fatalf("variadic enum %+v", items)
+	return out
+}
+
+func wantNotesOn(t *testing.T, res *imp.Result, path string, want ...string) {
+	t.Helper()
+	if got := notesOn(res, path); !reflect.DeepEqual(got, want) {
+		t.Fatalf("notes on %q:\n got  %q\n want %q", path, got, want)
+	}
+}
+
+// onlyValue isn't inlined, so its closure is named onlyValue.func1 on every Go version.
+//
+//go:noinline
+func onlyValue(v string) cobra.PositionalArgs {
+	return func(_ *cobra.Command, args []string) error {
+		for _, a := range args {
+			if a != v {
+				return errors.New("not " + v)
+			}
+		}
+		return nil
+	}
+}
+
+func TestValidArgs(t *testing.T) {
+	ab := []imp.EnumValue{{Value: "a", Summary: "the a"}, {Value: "b"}}
+	completion := func(vals, arg string) string {
+		return fmt.Sprintf("[info] app %s: ValidArgs [%s] imported as completion values of <%s>, not an enum: the Args validator does not check values against them, so Cobra accepts any value", arg, vals, map[string]string{"get": "kind", "pick": "args", "many": "args", "pass": "args", "aliased": "kind"}[arg])
+	}
+	cases := []struct {
+		name        string
+		cmd         *cobra.Command
+		enum, items []imp.EnumValue
+		completions []imp.EnumValue
+		notes       []string
+	}{
+		{name: "only valid", cmd: &cobra.Command{Use: "x <kind>", Args: cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs), ValidArgs: []string{"a\tthe a", "b"}},
+			enum: ab},
+		{name: "only valid list", cmd: &cobra.Command{Use: "x", Args: cobra.OnlyValidArgs, ValidArgs: []string{"a\tthe a", "b"}},
+			items: ab, notes: []string{"[lossy] app x: argument names invented (args): the Use line \"x\" does not name them"}},
+		{name: "only valid two", cmd: &cobra.Command{Use: "x <kind> <name>", Args: cobra.MatchAll(cobra.ExactArgs(2), cobra.OnlyValidArgs), ValidArgs: []string{"a\tthe a", "b"}},
+			enum: ab, notes: []string{"[lossy] app x: ValidArgs became the enum of the first argument only"}},
+		{name: "custom value check", cmd: &cobra.Command{Use: "x <kind>", Args: onlyValue("a"), ValidArgs: []string{"a\tthe a", "b"}},
+			items: ab, notes: []string{
+				"[lossy] app x: custom Args validator github.com/go-rotini/import/cobra_test.onlyValue.func1: the count 0..any was found by probing; move any value checks to the handler",
+			}},
+		{name: "exact count only", cmd: &cobra.Command{Use: "get <kind>", Args: cobra.ExactArgs(1), ValidArgs: []string{"a\tthe a", "b"}},
+			completions: ab, notes: []string{completion("a b", "get")}},
+		{name: "arbitrary", cmd: &cobra.Command{Use: "many", Args: cobra.ArbitraryArgs, ValidArgs: []string{"a\tthe a", "b"}},
+			completions: ab, notes: []string{
+				"[lossy] app many: argument names invented (args): the Use line \"many\" does not name them",
+				completion("a b", "many"),
+			}},
+		{name: "args unset", cmd: &cobra.Command{Use: "pick", ValidArgs: []string{"a\tthe a", "b"}},
+			completions: ab, notes: []string{
+				"[info] app pick: Args unset: Cobra accepts any positionals, so a trailing variadic args was added; delete it to reject extras",
+				completion("a b", "pick"),
+			}},
+		{name: "passthrough", cmd: &cobra.Command{Use: "pass", DisableFlagParsing: true, ValidArgs: []string{"a\tthe a", "b"}},
+			completions: ab, notes: []string{completion("a b", "pass")}},
+		{name: "aliases", cmd: &cobra.Command{Use: "aliased <kind>", Args: cobra.ExactArgs(1), ValidArgs: []string{"a\tthe a", "b"}, ArgAliases: []string{"aa", "b"}},
+			completions: append(slices.Clone(ab), imp.EnumValue{Value: "aa"}), notes: []string{
+				completion("a b", "aliased"),
+				"[info] app aliased: ArgAliases [aa b] imported as completion values of <kind>: Cobra offers them only when no ValidArgs value matches the word",
+			}},
+		{name: "aliases enforced", cmd: &cobra.Command{Use: "x <kind>", Args: cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs), ValidArgs: []string{"a\tthe a", "b"}, ArgAliases: []string{"aa"}},
+			enum: ab, completions: []imp.EnumValue{{Value: "aa"}}, notes: []string{
+				"[info] app x: ArgAliases [aa] imported as completion values of <kind>: Cobra offers them only when no ValidArgs value matches the word",
+			}},
+		{name: "aliases alone", cmd: &cobra.Command{Use: "x <kind>", Args: cobra.ExactArgs(1), ArgAliases: []string{"aa"}},
+			notes: []string{"[info] app x: ArgAliases [aa] dropped: Cobra completes them only on a command with ValidArgs"}},
+		{name: "no arguments", cmd: &cobra.Command{Use: "x", Args: cobra.NoArgs, ValidArgs: []string{"a\tthe a", "b"}},
+			notes: []string{"[info] app x: ValidArgs [a b] dropped: the command takes no arguments"}},
+		{name: "no arguments with aliases", cmd: &cobra.Command{Use: "x", Args: cobra.NoArgs, ValidArgs: []string{"a"}, ArgAliases: []string{"aa"}},
+			notes: []string{"[info] app x: ValidArgs [a] and ArgAliases [aa] dropped: the command takes no arguments"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := &cobra.Command{Use: "app"}
+			tc.cmd.Run = run
+			root.AddCommand(tc.cmd)
+			res := importTree(t, root, cobraimport.Options{})
+			c := find(t, res, "app "+tc.cmd.Name())
+			wantNotesOn(t, res, "app "+tc.cmd.Name(), tc.notes...)
+			var s *imp.Schema
+			if len(c.Arguments) > 0 {
+				s = c.Arguments[0].Schema
+			} else if tc.enum != nil || tc.items != nil || tc.completions != nil {
+				t.Fatal("no arguments")
+			} else {
+				return
+			}
+			var items []imp.EnumValue
+			if s.Items != nil {
+				items = s.Items.Enum
+			}
+			if !reflect.DeepEqual(s.Enum, tc.enum) || !reflect.DeepEqual(items, tc.items) || !reflect.DeepEqual(s.Completions, tc.completions) {
+				t.Fatalf("enum %+v, items %+v, completions %+v", s.Enum, items, s.Completions)
+			}
+			for _, a := range c.Arguments[1:] {
+				if a.Schema.Enum != nil || a.Schema.Completions != nil {
+					t.Fatalf("<%s> got values too", a.Name)
+				}
+			}
+		})
+	}
+}
+
+func underscoreToDash(_ *pflag.FlagSet, name string) pflag.NormalizedName {
+	return pflag.NormalizedName(strings.ReplaceAll(name, "_", "-"))
+}
+
+func anySeparatorAnyCase(_ *pflag.FlagSet, name string) pflag.NormalizedName {
+	return pflag.NormalizedName(strings.NewReplacer("_", "-", ".", "-").Replace(strings.ToLower(name)))
+}
+
+func normalizationNotes(res *imp.Result, path string) []string {
+	var out []string
+	for _, n := range notesFor(res, path, "normalization function") {
+		out = append(out, n.String())
+	}
+	return out
+}
+
+const triedNote = "it may accept spellings the import did not find: it tried the name with its separators ('-', '_', '.') made all one of them or removed, in camel case and in upper case, and the command line rejects any other spelling after the import"
+
+func TestNormalizedFlagNames(t *testing.T) {
+	t.Run("underscores", func(t *testing.T) {
+		root := &cobra.Command{Use: "app", Run: run}
+		root.PersistentFlags().String("log_level", "", "")
+		root.Flags().Bool("dry-run", false, "")
+		root.Flags().String("out", "", "")
+		child := &cobra.Command{Use: "child", Args: cobra.NoArgs, Run: run}
+		child.Flags().Int("max-retries", 0, "")
+		root.AddCommand(child)
+		root.SetGlobalNormalizationFunc(underscoreToDash)
+		before := root.PersistentFlags().Lookup("log_level")
+		res := importTree(t, root, cobraimport.Options{})
+		if before == nil || before.Name != "log-level" {
+			t.Fatalf("pflag did not normalize: %+v", before)
+		}
+		for path, want := range map[string]map[string][]string{
+			"app":       {"log-level": {"--log_level"}, "dry-run": {"--dry_run"}, "out": nil},
+			"app child": {"max-retries": {"--max_retries"}},
+		} {
+			for name, hidden := range want {
+				f := flagNamed(t, find(t, res, path), name)
+				if !reflect.DeepEqual(f.HiddenIdentifiers, hidden) || !reflect.DeepEqual(f.Identifiers, []string{"--" + name}) {
+					t.Fatalf("%s --%s: identifiers %v, hidden %v", path, name, f.Identifiers, f.HiddenIdentifiers)
+				}
+			}
+		}
+		wantNotesOn(t, res, "app child")
+		got := normalizationNotes(res, "app")
+		want := []string{
+			"[lossy] app: flag names pass through the normalization function github.com/go-rotini/import/cobra_test.underscoreToDash: the other spellings it accepts for 3 flags (such as --log_level for --log-level) were imported as hidden identifiers, so scripts that use them keep working; " + triedNote,
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("notes:\n got  %q\n want %q", got, want)
+		}
+	})
+	t.Run("invalid spellings", func(t *testing.T) {
+		root := &cobra.Command{Use: "app", Run: run}
+		root.Flags().String("log-level", "", "")
+		root.SetGlobalNormalizationFunc(anySeparatorAnyCase)
+		res := importTree(t, root, cobraimport.Options{})
+		f := flagNamed(t, res.Command, "log-level")
+		if want := []string{"--log_level", "--LOG-LEVEL", "--LOG_LEVEL"}; !reflect.DeepEqual(f.HiddenIdentifiers, want) {
+			t.Fatalf("hidden %v, want %v", f.HiddenIdentifiers, want)
+		}
+		got := normalizationNotes(res, "app")
+		want := []string{
+			"[lossy] app: --log-level also accepts --log.level, --LOG.LEVEL through the flag-name normalization function, which are not valid rotini identifiers here or name another flag: dropped",
+			"[lossy] app: flag names pass through the normalization function github.com/go-rotini/import/cobra_test.anySeparatorAnyCase: the other spellings it accepts for 1 flag (such as --log_level for --log-level) were imported as hidden identifiers, so scripts that use them keep working; " + triedNote,
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("notes:\n got  %q\n want %q", got, want)
+		}
+	})
+	t.Run("nothing found", func(t *testing.T) {
+		root := &cobra.Command{Use: "app"}
+		child := &cobra.Command{Use: "child", Args: cobra.NoArgs, Run: run}
+		child.Flags().String("out", "", "")
+		child.Flags().SetNormalizeFunc(anySeparatorAnyCase)
+		root.AddCommand(child)
+		res := importTree(t, root, cobraimport.Options{})
+		if f := flagNamed(t, find(t, res, "app child"), "out"); !reflect.DeepEqual(f.HiddenIdentifiers, []string{"--OUT"}) {
+			t.Fatalf("hidden %v", f.HiddenIdentifiers)
+		}
+		other := &cobra.Command{Use: "app"}
+		otherChild := &cobra.Command{Use: "child", Args: cobra.NoArgs, Run: run}
+		otherChild.Flags().String("out", "", "")
+		otherChild.Flags().SetNormalizeFunc(underscoreToDash)
+		other.AddCommand(otherChild)
+		res = importTree(t, other, cobraimport.Options{})
+		if f := flagNamed(t, find(t, res, "app child"), "out"); f.HiddenIdentifiers != nil {
+			t.Fatalf("hidden %v", f.HiddenIdentifiers)
+		}
+		wantNotesOn(t, res, "app child",
+			"[lossy] app child: flag names pass through the normalization function github.com/go-rotini/import/cobra_test.underscoreToDash; "+triedNote)
+		noNote(t, res, "app", "normalization")
+	})
+	t.Run("none", func(t *testing.T) {
+		root := &cobra.Command{Use: "app", Run: run}
+		root.Flags().String("log-level", "", "")
+		res := importTree(t, root, cobraimport.Options{})
+		if f := flagNamed(t, res.Command, "log-level"); f.HiddenIdentifiers != nil {
+			t.Fatalf("hidden %v", f.HiddenIdentifiers)
+		}
+		noNote(t, res, "app", "normalization")
+	})
+}
+
+// TestReimport imports one tree twice: the probes and normalization lookups leave it as it
+// was, so the second import is the first.
+func TestReimport(t *testing.T) {
+	root := &cobra.Command{Use: "app"}
+	get := &cobra.Command{Use: "get <kind>", Args: cobra.ExactArgs(1), ValidArgs: []string{"pods", "nodes"}, ArgAliases: []string{"po"}, Run: run}
+	get.Flags().String("log_level", "", "")
+	only := &cobra.Command{Use: "only <kind>", Args: cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs), ValidArgs: []string{"a"}, Run: run}
+	root.AddCommand(get, only)
+	root.SetGlobalNormalizationFunc(underscoreToDash)
+	first := importTree(t, root, cobraimport.Options{})
+	second := importTree(t, root, cobraimport.Options{})
+	if !reflect.DeepEqual(first, second) {
+		t.Fatalf("second import differs:\n%s\n%s", dumpNotes(first), dumpNotes(second))
+	}
+}
+
+func TestEnvironmentNote(t *testing.T) {
+	root := &cobra.Command{Use: "app"}
+	child := &cobra.Command{Use: "child", Run: run}
+	child.AddCommand(&cobra.Command{Use: "grand", Run: run})
+	root.AddCommand(child)
+	res := importTree(t, root, cobraimport.Options{})
+	want := imp.Note{Path: "app", Level: imp.Info, Msg: "the command tree was walked as the program built it on " + runtime.GOOS + "/" + runtime.GOARCH +
+		" with this environment's variables: commands and flags it adds only on another system or under other environment variables are not imported"}
+	n := 0
+	for _, got := range res.Notes {
+		if strings.Contains(got.Msg, "command tree was walked") {
+			n++
+		}
+	}
+	if n != 1 || res.Notes[len(res.Notes)-1] != want {
+		t.Fatalf("want the environment note once, last:\n%s", dumpNotes(res))
+	}
+}
+
+// TestValidArgsAccepted checks the premise: without OnlyValidArgs Cobra runs a command with a
+// value ValidArgs does not list, so the import must not make ValidArgs an enum.
+func TestValidArgsAccepted(t *testing.T) {
+	ran := false
+	root := &cobra.Command{Use: "app"}
+	root.AddCommand(&cobra.Command{Use: "get <kind>", Args: cobra.ExactArgs(1), ValidArgs: []string{"pods"},
+		Run: func(*cobra.Command, []string) { ran = true }})
+	root.SetArgs([]string{"get", "foo"})
+	root.SetOut(io.Discard)
+	if err := root.Execute(); err != nil || !ran {
+		t.Fatalf("Cobra rejected an unlisted value: %v", err)
+	}
+	res := importTree(t, root, cobraimport.Options{})
+	if s := find(t, res, "app get").Arguments[0].Schema; s.Enum != nil || len(s.Completions) != 1 {
+		t.Fatalf("schema %+v", s)
 	}
 }
 
